@@ -7,8 +7,8 @@ import {
 	Heart,
 	Home,
 	LogOut,
-	MapPin,
 	Mail,
+	MapPin,
 	Package,
 	Phone,
 	Settings,
@@ -16,6 +16,8 @@ import {
 	Sparkles,
 	UserRound,
 } from "lucide-react";
+import type { FormEvent } from "react";
+import { useEffect, useState } from "react";
 import {
 	Bar,
 	BarChart,
@@ -24,8 +26,12 @@ import {
 	XAxis,
 	YAxis,
 } from "recharts";
-import type { FormEvent } from "react";
-import { useEffect, useState } from "react";
+import {
+	getMyProfile,
+	saveMyProfile,
+	saveVerifiedPhone,
+} from "../features/profile/profile.functions";
+import type { ProfileRecord } from "../features/profile/profile.types";
 import { getSessionAccess } from "../lib/auth";
 
 export const Route = createFileRoute("/dashboard")({
@@ -67,6 +73,14 @@ function DashboardPage() {
 		useState<(typeof nav)[number][1]>("Overview");
 	const displayName = user?.fullName || user?.firstName || "Luca";
 	const initial = displayName.charAt(0).toUpperCase();
+	const openSettings = () => {
+		setActiveView("Settings");
+		window.requestAnimationFrame(() => {
+			document
+				.getElementById("profile")
+				?.scrollIntoView({ behavior: "smooth", block: "start" });
+		});
+	};
 	return (
 		<main className="min-h-screen bg-[#fff8e9] text-[#64391f] lg:grid lg:grid-cols-[255px_1fr]">
 			<aside className="bg-[#64391f] px-5 py-5 text-[#fff8e9] lg:min-h-screen lg:px-7 lg:py-8">
@@ -160,61 +174,60 @@ function DashboardPage() {
 				{activeView === "Settings" ? (
 					<ProfileSetup />
 				) : activeView === "Overview" ? (
-					<>
-						<div className="mt-9 grid gap-5 xl:grid-cols-[1.25fr_.75fr]">
-							<section className="rounded-[1.75rem] bg-white p-6 shadow-[0_12px_32px_rgba(100,57,31,.08)]">
-								<div className="flex items-center justify-between">
-									<div>
-										<p className="text-[10px] font-bold uppercase tracking-wider text-[#a84716]">
-											Latest order
-										</p>
-										<h2 className="mt-2 font-serif text-2xl font-bold">
-											Order #MP-2841
-										</h2>
-									</div>
-									<span className="rounded-full bg-[#edf1d7] px-3 py-1 text-xs font-bold text-[#56611c]">
-										On its way
-									</span>
+					<div className="mt-9 grid gap-5 xl:grid-cols-[1.25fr_.75fr]">
+						<section className="rounded-[1.75rem] bg-white p-6 shadow-[0_12px_32px_rgba(100,57,31,.08)]">
+							<div className="flex items-center justify-between">
+								<div>
+									<p className="text-[10px] font-bold uppercase tracking-wider text-[#a84716]">
+										Latest order
+									</p>
+									<h2 className="mt-2 font-serif text-2xl font-bold">
+										Order #MP-2841
+									</h2>
 								</div>
-								<div className="mt-6 grid gap-4 border-y border-[#eadfc9] py-5 sm:grid-cols-3">
-									<div>
-										<p className="text-xs text-[#70452d]">Estimated arrival</p>
-										<p className="mt-1 font-bold">Friday, 18 Oct</p>
-									</div>
-									<div>
-										<p className="text-xs text-[#70452d]">Total</p>
-										<p className="mt-1 font-bold">$42.00</p>
-									</div>
-									<div>
-										<p className="text-xs text-[#70452d]">Items</p>
-										<p className="mt-1 font-bold">3 artisan packs</p>
-									</div>
+								<span className="rounded-full bg-[#edf1d7] px-3 py-1 text-xs font-bold text-[#56611c]">
+									On its way
+								</span>
+							</div>
+							<div className="mt-6 grid gap-4 border-y border-[#eadfc9] py-5 sm:grid-cols-3">
+								<div>
+									<p className="text-xs text-[#70452d]">Estimated arrival</p>
+									<p className="mt-1 font-bold">Friday, 18 Oct</p>
 								</div>
-								<a
-									href="#order"
-									className="mt-5 flex items-center justify-between text-sm font-bold text-[#a84716]"
-								>
-									Track your order <ChevronRight size={17} />
-								</a>
-							</section>
-							<aside className="rounded-[1.75rem] bg-[#f66a16] p-6 text-white">
-								<Sparkles size={22} />
-								<h2 className="mt-5 font-serif text-2xl font-bold">
-									Your pasta profile
-								</h2>
-								<p className="mt-2 text-sm leading-6 text-[#fff0d1]">
-									You’re a classicist at heart, with a soft spot for slow Sunday
-									sauces.
-								</p>
-								<a
-									href="#profile"
-									className="mt-6 inline-block rounded-full bg-white px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-[#a84716] no-underline"
-								>
-									View profile
-								</a>
-							</aside>
-						</div>
-					</>
+								<div>
+									<p className="text-xs text-[#70452d]">Total</p>
+									<p className="mt-1 font-bold">$42.00</p>
+								</div>
+								<div>
+									<p className="text-xs text-[#70452d]">Items</p>
+									<p className="mt-1 font-bold">3 artisan packs</p>
+								</div>
+							</div>
+							<a
+								href="#order"
+								className="mt-5 flex items-center justify-between text-sm font-bold text-[#a84716]"
+							>
+								Track your order <ChevronRight size={17} />
+							</a>
+						</section>
+						<aside className="rounded-[1.75rem] bg-[#f66a16] p-6 text-white">
+							<Sparkles size={22} />
+							<h2 className="mt-5 font-serif text-2xl font-bold">
+								Your pasta profile
+							</h2>
+							<p className="mt-2 text-sm leading-6 text-[#fff0d1]">
+								You’re a classicist at heart, with a soft spot for slow Sunday
+								sauces.
+							</p>
+							<button
+								type="button"
+								onClick={openSettings}
+								className="mt-6 inline-block rounded-full !bg-white px-4 py-2.5 text-xs font-bold uppercase tracking-wider !text-[#a84716] shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:!bg-[#fff0d7] hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
+							>
+								View profile
+							</button>
+						</aside>
+					</div>
 				) : (
 					<UserWorkspace view={activeView} />
 				)}
@@ -282,12 +295,13 @@ function DashboardPage() {
 								<dd className="mt-1 font-semibold">March 2024</dd>
 							</div>
 						</dl>
-						<a
-							href="#settings"
-							className="mt-6 inline-block text-sm font-bold text-[#a84716]"
+						<button
+							type="button"
+							onClick={openSettings}
+							className="mt-6 inline-flex items-center rounded-lg text-sm font-bold text-[#a84716] transition-all duration-200 hover:translate-x-0.5 hover:text-[#df5509] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#f66a16]/35"
 						>
 							Edit account
-						</a>
+						</button>
 					</section>
 				</div>
 				<div className="mt-7 grid gap-7 xl:grid-cols-[1.25fr_.75fr]">
@@ -387,11 +401,13 @@ function UserWorkspace({
 
 function ProfileSetup() {
 	const { user } = useUser();
-	const storageKey = user ? `pastalo:profile:${user.id}` : "pastalo:profile";
 	const [firstName, setFirstName] = useState(user?.firstName ?? "");
 	const [lastName, setLastName] = useState(user?.lastName ?? "");
 	const [address, setAddress] = useState("");
-	const [pinCode, setPinCode] = useState("");
+	const [city, setCity] = useState("");
+	const [state, setState] = useState("");
+	const [postalCode, setPostalCode] = useState("");
+	const [country, setCountry] = useState("India");
 	const [phone, setPhone] = useState(
 		user?.primaryPhoneNumber?.phoneNumber ?? "",
 	);
@@ -400,31 +416,45 @@ function ProfileSetup() {
 	const [phoneVerified, setPhoneVerified] = useState(
 		user?.primaryPhoneNumber?.verification.status === "verified",
 	);
+	const [changingPhone, setChangingPhone] = useState(false);
+	const [savedProfile, setSavedProfile] = useState<ProfileRecord | null>(null);
+	const [loading, setLoading] = useState(true);
 	const [saving, setSaving] = useState(false);
 	const [message, setMessage] = useState("");
 	const [error, setError] = useState("");
 
 	useEffect(() => {
+		let active = true;
 		if (!user) return;
-		setFirstName(user.firstName ?? "");
-		setLastName(user.lastName ?? "");
-		setPhone(user.primaryPhoneNumber?.phoneNumber ?? "");
-		setPhoneVerified(
-			user.primaryPhoneNumber?.verification.status === "verified",
-		);
-		const saved = window.localStorage.getItem(storageKey);
-		if (!saved) return;
-		try {
-			const profile = JSON.parse(saved) as {
-				address?: string;
-				pinCode?: string;
-			};
-			setAddress(profile.address ?? "");
-			setPinCode(profile.pinCode ?? "");
-		} catch {
-			window.localStorage.removeItem(storageKey);
-		}
-	}, [storageKey, user]);
+		void getMyProfile()
+			.then((profile) => {
+				if (!active) return;
+				setSavedProfile(profile);
+				setFirstName(profile.firstName || user.firstName || "");
+				setLastName(profile.lastName || user.lastName || "");
+				setAddress(profile.addressLine1);
+				setCity(profile.city);
+				setState(profile.state);
+				setPostalCode(profile.postalCode);
+				setCountry(profile.country || "India");
+				setPhone(
+					profile.phoneNumber ?? user.primaryPhoneNumber?.phoneNumber ?? "",
+				);
+				setPhoneVerified(Boolean(profile.phoneVerifiedAt));
+			})
+			.catch(() => {
+				if (active)
+					setError(
+						"We couldn't load your saved profile. Please refresh and try again.",
+					);
+			})
+			.finally(() => {
+				if (active) setLoading(false);
+			});
+		return () => {
+			active = false;
+		};
+	}, [user]);
 
 	const saveProfile = async (event: FormEvent<HTMLFormElement>) => {
 		event.preventDefault();
@@ -435,23 +465,38 @@ function ProfileSetup() {
 			setError("Please add both your first and last name.");
 			return;
 		}
-		if (!address.trim() || !pinCode.trim()) {
-			setError("Please add your delivery address and PIN code.");
+		if (
+			!address.trim() ||
+			!city.trim() ||
+			!state.trim() ||
+			!postalCode.trim()
+		) {
+			setError(
+				"Please complete your delivery address, city, state and PIN code.",
+			);
 			return;
 		}
 		setSaving(true);
 		try {
-			await user.update({
-				firstName: firstName.trim(),
-				lastName: lastName.trim(),
+			const profile = await saveMyProfile({
+				data: {
+					firstName,
+					lastName,
+					addressLine1: address,
+					city,
+					state,
+					postalCode,
+					country,
+				},
 			});
-			window.localStorage.setItem(
-				storageKey,
-				JSON.stringify({ address: address.trim(), pinCode: pinCode.trim() }),
-			);
+			setSavedProfile(profile);
 			setMessage("Your pantry profile has been saved.");
-		} catch {
-			setError("We couldn't save your name just now. Please try again.");
+		} catch (caught) {
+			setError(
+				caught instanceof Error
+					? caught.message
+					: "We couldn't save your profile just now. Please try again.",
+			);
 		} finally {
 			setSaving(false);
 		}
@@ -505,8 +550,16 @@ function ProfileSetup() {
 			});
 			if (verified.verification.status !== "verified")
 				throw new Error("Phone verification is incomplete");
+			await user.update({ primaryPhoneNumberId: verified.id });
+			const profile = await saveVerifiedPhone({
+				data: { phoneId: verified.id },
+			});
 			await user.reload();
+			setSavedProfile(profile);
+			setPhone(profile.phoneNumber ?? verified.phoneNumber);
 			setPhoneVerified(true);
+			setChangingPhone(false);
+			setPhoneId(null);
 			setPhoneCode("");
 			setMessage("Phone number verified. Your account is ready.");
 		} catch {
@@ -516,13 +569,19 @@ function ProfileSetup() {
 		}
 	};
 	const cancel = () => {
-		setFirstName(user?.firstName ?? "");
-		setLastName(user?.lastName ?? "");
-		setAddress("");
-		setPinCode("");
-		setPhone(user?.primaryPhoneNumber?.phoneNumber ?? "");
+		setFirstName(savedProfile?.firstName ?? user?.firstName ?? "");
+		setLastName(savedProfile?.lastName ?? user?.lastName ?? "");
+		setAddress(savedProfile?.addressLine1 ?? "");
+		setCity(savedProfile?.city ?? "");
+		setState(savedProfile?.state ?? "");
+		setPostalCode(savedProfile?.postalCode ?? "");
+		setCountry(savedProfile?.country ?? "India");
+		setPhone(
+			savedProfile?.phoneNumber ?? user?.primaryPhoneNumber?.phoneNumber ?? "",
+		);
 		setPhoneCode("");
 		setPhoneId(null);
+		setChangingPhone(false);
 		setError("");
 		setMessage("");
 	};
@@ -555,7 +614,7 @@ function ProfileSetup() {
 					{phoneVerified ? "Phone verified" : "Profile setup"}
 				</span>
 			</div>
-			<form onSubmit={saveProfile} className="p-6 sm:p-7">
+			<form onSubmit={saveProfile} className="p-6 sm:p-7" aria-busy={loading}>
 				<div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#eadfc9] bg-[#fff8e9] p-3">
 					<p className="px-2 text-sm font-semibold text-[#70452d]">
 						Review your details, then save your pantry profile.
@@ -571,7 +630,7 @@ function ProfileSetup() {
 						<button
 							type="submit"
 							disabled={saving}
-							className="rounded-full border border-[#f66a16] bg-white px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-[#a84716] transition hover:bg-[#fff0d7] disabled:opacity-60"
+							className="rounded-full border border-[#f66a16] !bg-[#f66a16] px-4 py-2.5 text-xs font-bold uppercase tracking-wider !text-white shadow-[0_8px_18px_rgba(246,106,22,.22)] transition-all duration-200 ease-out hover:-translate-y-0.5 hover:!bg-[#df5509] hover:shadow-[0_12px_24px_rgba(246,106,22,.3)] active:translate-y-0 active:scale-[.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#f66a16]/45 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:transform-none disabled:opacity-60"
 						>
 							Save changes
 						</button>
@@ -606,7 +665,7 @@ function ProfileSetup() {
 						/>
 					</span>
 				</label>
-				<div className="mt-4 grid gap-4 sm:grid-cols-[1fr_150px]">
+				<div className="mt-4 grid gap-4 sm:grid-cols-2">
 					<ProfileField
 						label="Delivery address"
 						value={address}
@@ -615,11 +674,31 @@ function ProfileSetup() {
 						icon={<MapPin size={16} />}
 					/>
 					<ProfileField
+						label="City"
+						value={city}
+						onChange={setCity}
+						autoComplete="address-level2"
+					/>
+				</div>
+				<div className="mt-4 grid gap-4 sm:grid-cols-3">
+					<ProfileField
+						label="State"
+						value={state}
+						onChange={setState}
+						autoComplete="address-level1"
+					/>
+					<ProfileField
 						label="PIN code"
-						value={pinCode}
-						onChange={setPinCode}
+						value={postalCode}
+						onChange={setPostalCode}
 						autoComplete="postal-code"
 						inputMode="numeric"
+					/>
+					<ProfileField
+						label="Country"
+						value={country}
+						onChange={setCountry}
+						autoComplete="country-name"
 					/>
 				</div>
 				<div className="mt-6 border-t border-[#eadfc9] pt-5">
@@ -630,11 +709,17 @@ function ProfileSetup() {
 								We’ll use it only for delivery updates.
 							</p>
 						</div>
-						{phoneVerified && (
-							<span className="text-xs font-bold text-[#56611c]">Verified</span>
+						{phoneVerified && !changingPhone && (
+							<button
+								type="button"
+								onClick={() => setChangingPhone(true)}
+								className="text-xs font-bold text-[#a84716] underline underline-offset-4"
+							>
+								Change phone number
+							</button>
 						)}
 					</div>
-					{!phoneVerified && (
+					{(!phoneVerified || changingPhone) && (
 						<div className="mt-4 grid gap-3 sm:grid-cols-[1fr_auto]">
 							<label className="relative">
 								<span className="sr-only">Phone number</span>
@@ -659,6 +744,24 @@ function ProfileSetup() {
 							>
 								Send code
 							</button>
+							{changingPhone && (
+								<button
+									type="button"
+									onClick={() => {
+										setChangingPhone(false);
+										setPhoneId(null);
+										setPhoneCode("");
+										setPhone(
+											savedProfile?.phoneNumber ??
+												user?.primaryPhoneNumber?.phoneNumber ??
+												"",
+										);
+									}}
+									className="text-xs font-bold text-[#70452d] underline underline-offset-4"
+								>
+									Keep current
+								</button>
+							)}
 							{phoneId && (
 								<div className="flex gap-2 sm:col-span-2">
 									<input
@@ -691,17 +794,14 @@ function ProfileSetup() {
 					</p>
 				)}
 				{message && (
-					<p
-						role="status"
-						className="mt-4 text-sm font-semibold text-[#56611c]"
-					>
+					<output className="mt-4 block text-sm font-semibold text-[#56611c]">
 						{message}
-					</p>
+					</output>
 				)}
 				<button
 					type="submit"
-					disabled={saving}
-					className="mt-6 rounded-full border border-[#f66a16] bg-white px-5 py-3 text-xs font-bold uppercase tracking-wider text-[#a84716] transition hover:-translate-y-0.5 hover:bg-[#fff0d7] disabled:opacity-60"
+					disabled={saving || loading}
+					className="mt-6 rounded-full border border-[#f66a16] !bg-[#f66a16] px-5 py-3 text-xs font-bold uppercase tracking-wider !text-white shadow-[0_8px_18px_rgba(246,106,22,.22)] transition-all duration-200 ease-out hover:-translate-y-0.5 hover:!bg-[#df5509] hover:shadow-[0_12px_24px_rgba(246,106,22,.3)] active:translate-y-0 active:scale-[.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#f66a16]/45 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:transform-none disabled:opacity-60"
 				>
 					{saving ? "Saving…" : "Save changes"}
 				</button>

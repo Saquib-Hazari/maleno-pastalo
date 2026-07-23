@@ -10,13 +10,15 @@ import {
 	ChevronDown,
 	ClipboardList,
 	LayoutDashboard,
-	PackageCheck,
 	LogOut,
-	UserRound,
+	PackageCheck,
 	Settings,
 	ShoppingBag,
+	UserRound,
 	Users,
 } from "lucide-react";
+import type { FormEvent } from "react";
+import { useEffect, useState } from "react";
 import {
 	Area,
 	AreaChart,
@@ -26,8 +28,21 @@ import {
 	XAxis,
 	YAxis,
 } from "recharts";
-import type { FormEvent } from "react";
-import { useState } from "react";
+import {
+	deleteCatalogProduct,
+	getAdminCatalog,
+	saveCatalogProduct,
+} from "../features/catalog/catalog.functions";
+import type {
+	AdminCatalogProduct,
+	CatalogProductInput,
+} from "../features/catalog/catalog.types";
+import {
+	getMyProfile,
+	saveMyProfile,
+	saveVerifiedPhone,
+} from "../features/profile/profile.functions";
+import type { ProfileRecord } from "../features/profile/profile.types";
 import { getSessionAccess } from "../lib/auth";
 
 export const Route = createFileRoute("/admin")({
@@ -489,6 +504,8 @@ function AdminWorkspace({
 						</tbody>
 					</table>
 				</div>
+			) : view === "Products" ? (
+				<CatalogManager />
 			) : (
 				<div className="mt-6 rounded-2xl border border-dashed border-[#decba8] bg-[#fff8e9] p-6 text-sm text-[#70452d]">
 					This interactive workspace is ready for your live data connection. The
@@ -500,13 +517,304 @@ function AdminWorkspace({
 	);
 }
 
+const emptyCatalogProduct: CatalogProductInput = {
+	name: "",
+	description: "",
+	category: "specialty",
+	price: 0,
+	quantity: 0,
+	imageUrl: "",
+	status: "draft",
+};
+
+function CatalogManager() {
+	const [items, setItems] = useState<AdminCatalogProduct[]>([]);
+	const [draft, setDraft] = useState<CatalogProductInput>(emptyCatalogProduct);
+	const [loading, setLoading] = useState(true);
+	const [saving, setSaving] = useState(false);
+	const [message, setMessage] = useState("");
+	const [error, setError] = useState("");
+
+	useEffect(() => {
+		let active = true;
+		void getAdminCatalog()
+			.then((catalog) => active && setItems(catalog))
+			.catch(() => active && setError("We couldn't load the catalog."))
+			.finally(() => active && setLoading(false));
+		return () => {
+			active = false;
+		};
+	}, []);
+	const edit = (item: AdminCatalogProduct) => {
+		setDraft({
+			id: item.id,
+			name: item.name,
+			description: item.description,
+			category: item.category,
+			price: item.price,
+			quantity: item.availableQuantity,
+			imageUrl: item.image,
+			status: item.status,
+		});
+		setMessage("");
+		setError("");
+	};
+	const save = async (event: FormEvent<HTMLFormElement>) => {
+		event.preventDefault();
+		setSaving(true);
+		setError("");
+		setMessage("");
+		try {
+			const catalog = await saveCatalogProduct({ data: draft });
+			setItems(catalog);
+			setMessage(
+				draft.id
+					? "Product and stock updated."
+					: "Product added to the storefront.",
+			);
+			setDraft(emptyCatalogProduct);
+		} catch (caught) {
+			setError(
+				caught instanceof Error
+					? caught.message
+					: "We couldn't save this product.",
+			);
+		} finally {
+			setSaving(false);
+		}
+	};
+	const remove = async (item: AdminCatalogProduct) => {
+		if (!window.confirm(`Delete “${item.name}”? This cannot be undone.`))
+			return;
+		setSaving(true);
+		setError("");
+		try {
+			const catalog = await deleteCatalogProduct({ data: { id: item.id } });
+			setItems(catalog);
+			if (draft.id === item.id) setDraft(emptyCatalogProduct);
+			setMessage("Product deleted from the catalog and shop.");
+		} catch (caught) {
+			setError(
+				caught instanceof Error
+					? caught.message
+					: "We couldn't delete this product.",
+			);
+		} finally {
+			setSaving(false);
+		}
+	};
+	const update = <K extends keyof CatalogProductInput>(
+		key: K,
+		value: CatalogProductInput[K],
+	) => setDraft((current) => ({ ...current, [key]: value }));
+	return (
+		<div className="mt-6 grid gap-6 xl:grid-cols-[.8fr_1.2fr]">
+			<form
+				onSubmit={save}
+				className="rounded-2xl border border-[#eadfc9] bg-[#fff8e9] p-5"
+			>
+				<div className="flex items-center justify-between gap-3">
+					<div>
+						<p className="text-[10px] font-bold uppercase tracking-wider text-[#a84716]">
+							Catalog editor
+						</p>
+						<h3 className="mt-1 font-serif text-2xl font-bold">
+							{draft.id ? "Edit pasta" : "Add pasta"}
+						</h3>
+					</div>
+					{draft.id && (
+						<button
+							type="button"
+							onClick={() => setDraft(emptyCatalogProduct)}
+							className="text-xs font-bold text-[#a84716] underline"
+						>
+							New product
+						</button>
+					)}
+				</div>
+				<div className="mt-5 grid gap-3">
+					<CatalogInput
+						label="Product name"
+						value={draft.name}
+						onChange={(value) => update("name", value)}
+					/>
+					<CatalogInput
+						label="Description"
+						value={draft.description}
+						onChange={(value) => update("description", value)}
+					/>
+					<CatalogInput
+						label="Image URL"
+						value={draft.imageUrl}
+						onChange={(value) => update("imageUrl", value)}
+						placeholder="/images/products/package.webp"
+					/>
+					<div className="grid grid-cols-2 gap-3">
+						<CatalogInput
+							label="Price (USD)"
+							value={String(draft.price)}
+							inputMode="decimal"
+							onChange={(value) => update("price", Number(value))}
+						/>
+						<CatalogInput
+							label="Quantity"
+							value={String(draft.quantity)}
+							inputMode="numeric"
+							onChange={(value) => update("quantity", Number(value))}
+						/>
+					</div>
+					<div className="grid grid-cols-2 gap-3">
+						<label className="text-xs font-bold text-[#64391f]">
+							Category
+							<select
+								value={draft.category}
+								onChange={(event) => update("category", event.target.value)}
+								className="mt-1.5 w-full rounded-xl border border-[#dfcfac] bg-white px-3 py-2.5 text-sm outline-none focus:border-[#f66a16]"
+							>
+								<option value="long">Long pasta</option>
+								<option value="short">Short pasta</option>
+								<option value="specialty">Specialty / bundle</option>
+							</select>
+						</label>
+						<label className="text-xs font-bold text-[#64391f]">
+							Store status
+							<select
+								value={draft.status}
+								onChange={(event) =>
+									update(
+										"status",
+										event.target.value as CatalogProductInput["status"],
+									)
+								}
+								className="mt-1.5 w-full rounded-xl border border-[#dfcfac] bg-white px-3 py-2.5 text-sm outline-none focus:border-[#f66a16]"
+							>
+								<option value="draft">Draft</option>
+								<option value="active">Active</option>
+								<option value="archived">Archived</option>
+							</select>
+						</label>
+					</div>
+				</div>
+				<button
+					type="submit"
+					disabled={saving}
+					className="mt-5 rounded-full !bg-[#f66a16] px-5 py-3 text-xs font-bold uppercase tracking-wider !text-white shadow-[0_8px_18px_rgba(246,106,22,.22)] transition-all hover:-translate-y-0.5 hover:!bg-[#df5509] disabled:opacity-60"
+				>
+					{saving ? "Saving…" : draft.id ? "Save product" : "Add product"}
+				</button>
+				{message && (
+					<output className="ml-3 text-sm font-bold text-[#56611c]">
+						{message}
+					</output>
+				)}
+				{error && (
+					<p role="alert" className="mt-3 text-sm font-bold text-[#a84716]">
+						{error}
+					</p>
+				)}
+			</form>
+			<div className="overflow-hidden rounded-2xl border border-[#eadfc9] bg-white">
+				<div className="flex items-center justify-between border-b border-[#eadfc9] px-5 py-4">
+					<div>
+						<p className="text-[10px] font-bold uppercase tracking-wider text-[#a84716]">
+							Live inventory
+						</p>
+						<h3 className="mt-1 font-serif text-2xl font-bold">
+							{loading ? "Loading…" : `${items.length} products`}
+						</h3>
+					</div>
+					<a
+						href="/shop"
+						className="text-xs font-bold text-[#a84716] underline"
+					>
+						View shop
+					</a>
+				</div>
+				<div className="max-h-[620px] divide-y divide-[#f0e8d7] overflow-y-auto">
+					{items.map((item) => (
+						<article
+							key={item.variantId}
+							className="flex items-center gap-3 p-4 transition hover:bg-[#fff8e9]"
+						>
+							<img
+								src={item.image}
+								alt=""
+								className="size-12 rounded-xl bg-[#f3e8cc] object-contain"
+							/>
+							<div className="min-w-0 flex-1">
+								<p className="truncate font-serif text-base font-bold">
+									{item.name}
+								</p>
+								<p className="mt-0.5 text-xs text-[#70452d]">
+									${item.price.toFixed(2)} · {item.sku}
+								</p>
+							</div>
+							<div className="flex shrink-0 flex-col items-end gap-2">
+								<span
+									className={`rounded-full px-2.5 py-1 text-[10px] font-bold ${item.isSoldOut ? "bg-[#64391f] text-white" : "bg-[#edf1d7] text-[#56611c]"}`}
+								>
+									{item.isSoldOut
+										? "Sold out"
+										: `${item.availableQuantity} in stock`}
+								</span>
+								<span className="flex gap-2">
+									<button
+										type="button"
+										onClick={() => edit(item)}
+										className="text-xs font-bold text-[#a84716] underline underline-offset-4"
+									>
+										Edit
+									</button>
+									<button
+										type="button"
+										onClick={() => void remove(item)}
+										disabled={saving}
+										className="text-xs font-bold text-[#9b2f20] underline underline-offset-4 disabled:opacity-50"
+									>
+										Delete
+									</button>
+								</span>
+							</div>
+						</article>
+					))}
+				</div>
+			</div>
+		</div>
+	);
+}
+
+function CatalogInput({
+	label,
+	value,
+	onChange,
+	placeholder,
+	inputMode,
+}: {
+	label: string;
+	value: string;
+	onChange: (value: string) => void;
+	placeholder?: string;
+	inputMode?: "numeric" | "decimal";
+}) {
+	return (
+		<label className="text-xs font-bold text-[#64391f]">
+			{label}
+			<input
+				value={value}
+				onChange={(event) => onChange(event.target.value)}
+				placeholder={placeholder}
+				inputMode={inputMode}
+				required
+				className="mt-1.5 w-full rounded-xl border border-[#dfcfac] bg-white px-3 py-2.5 text-sm font-medium outline-none transition focus:border-[#f66a16] focus:ring-2 focus:ring-[#f66a16]/15"
+			/>
+		</label>
+	);
+}
+
 function AdminAccountSettings() {
 	const { user } = useUser();
 	const [firstName, setFirstName] = useState(user?.firstName ?? "Saquibhazari");
 	const [lastName, setLastName] = useState(user?.lastName ?? "");
-	const [email, setEmail] = useState(
-		user?.primaryEmailAddress?.emailAddress ?? "",
-	);
 	const [phone, setPhone] = useState(
 		user?.primaryPhoneNumber?.phoneNumber ?? "",
 	);
@@ -515,24 +823,148 @@ function AdminAccountSettings() {
 	const [state, setState] = useState("");
 	const [zipCode, setZipCode] = useState("");
 	const [country, setCountry] = useState("India");
-	const [preview, setPreview] = useState(user?.imageUrl ?? "");
-	const [saved, setSaved] = useState(false);
+	const [phoneCode, setPhoneCode] = useState("");
+	const [phoneId, setPhoneId] = useState<string | null>(null);
+	const [phoneVerified, setPhoneVerified] = useState(false);
+	const [changingPhone, setChangingPhone] = useState(false);
+	const [savedProfile, setSavedProfile] = useState<ProfileRecord | null>(null);
+	const [saving, setSaving] = useState(false);
+	const [message, setMessage] = useState("");
+	const [error, setError] = useState("");
+
+	useEffect(() => {
+		let active = true;
+		if (!user) return;
+		void getMyProfile()
+			.then((profile) => {
+				if (!active) return;
+				setSavedProfile(profile);
+				setFirstName(profile.firstName || user.firstName || "");
+				setLastName(profile.lastName || user.lastName || "");
+				setPhone(
+					profile.phoneNumber ?? user.primaryPhoneNumber?.phoneNumber ?? "",
+				);
+				setAddress(profile.addressLine1);
+				setCity(profile.city);
+				setState(profile.state);
+				setZipCode(profile.postalCode);
+				setCountry(profile.country || "India");
+				setPhoneVerified(Boolean(profile.phoneVerifiedAt));
+			})
+			.catch(() => active && setError("We couldn't load your saved profile."));
+		return () => {
+			active = false;
+		};
+	}, [user]);
+
 	const cancel = () => {
-		setFirstName(user?.firstName ?? "Saquibhazari");
-		setLastName(user?.lastName ?? "");
-		setEmail(user?.primaryEmailAddress?.emailAddress ?? "");
-		setPhone(user?.primaryPhoneNumber?.phoneNumber ?? "");
-		setAddress("");
-		setCity("");
-		setState("");
-		setZipCode("");
-		setCountry("India");
-		setPreview(user?.imageUrl ?? "");
-		setSaved(false);
+		setFirstName(savedProfile?.firstName ?? user?.firstName ?? "Saquibhazari");
+		setLastName(savedProfile?.lastName ?? user?.lastName ?? "");
+		setPhone(
+			savedProfile?.phoneNumber ?? user?.primaryPhoneNumber?.phoneNumber ?? "",
+		);
+		setAddress(savedProfile?.addressLine1 ?? "");
+		setCity(savedProfile?.city ?? "");
+		setState(savedProfile?.state ?? "");
+		setZipCode(savedProfile?.postalCode ?? "");
+		setCountry(savedProfile?.country ?? "India");
+		setPhoneCode("");
+		setPhoneId(null);
+		setChangingPhone(false);
+		setError("");
+		setMessage("");
 	};
-	const save = (event: FormEvent<HTMLFormElement>) => {
+	const save = async (event: FormEvent<HTMLFormElement>) => {
 		event.preventDefault();
-		setSaved(true);
+		setError("");
+		setMessage("");
+		setSaving(true);
+		try {
+			const profile = await saveMyProfile({
+				data: {
+					firstName,
+					lastName,
+					addressLine1: address,
+					city,
+					state,
+					postalCode: zipCode,
+					country,
+				},
+			});
+			setSavedProfile(profile);
+			setMessage("Information saved securely to your administrator profile.");
+		} catch (caught) {
+			setError(
+				caught instanceof Error
+					? caught.message
+					: "We couldn't save your profile.",
+			);
+		} finally {
+			setSaving(false);
+		}
+	};
+	const sendPhoneCode = async () => {
+		if (!user) return;
+		const normalizedPhone = phone.replaceAll(" ", "");
+		if (!/^\+[1-9]\d{7,14}$/.test(normalizedPhone)) {
+			setError(
+				"Enter a valid number with country code, for example +91 98765 43210.",
+			);
+			return;
+		}
+		setError("");
+		setMessage("");
+		setSaving(true);
+		try {
+			const existing = user.phoneNumbers.find(
+				(number) => number.phoneNumber === normalizedPhone,
+			);
+			const number =
+				existing ??
+				(await user.createPhoneNumber({ phoneNumber: normalizedPhone }));
+			await number.prepareVerification();
+			setPhoneId(number.id);
+			setMessage("A verification code was sent to your phone.");
+		} catch {
+			setError(
+				"We couldn't send a verification code. Check the number and try again.",
+			);
+		} finally {
+			setSaving(false);
+		}
+	};
+	const verifyPhone = async () => {
+		if (!user || !phoneId) return;
+		if (!/^\d{6}$/.test(phoneCode)) {
+			setError("Enter the 6-digit code sent to your phone.");
+			return;
+		}
+		setError("");
+		setMessage("");
+		setSaving(true);
+		try {
+			const number = user.phoneNumbers.find((item) => item.id === phoneId);
+			if (!number) throw new Error("Phone verification expired");
+			const verified = await number.attemptVerification({ code: phoneCode });
+			if (verified.verification.status !== "verified")
+				throw new Error("Phone verification is incomplete");
+			await user.update({ primaryPhoneNumberId: verified.id });
+			const profile = await saveVerifiedPhone({
+				data: { phoneId: verified.id },
+			});
+			await user.reload();
+			setSavedProfile(profile);
+			setPhone(profile.phoneNumber ?? verified.phoneNumber);
+			setPhoneVerified(true);
+			setChangingPhone(false);
+			setPhoneCode("");
+			setPhoneId(null);
+			setMessage("Phone number verified and saved.");
+		} catch {
+			setError("That code didn't verify. Request a new one and try again.");
+		} finally {
+			setSaving(false);
+		}
 	};
 	const field = (
 		label: string,
@@ -546,7 +978,6 @@ function AdminAccountSettings() {
 				value={value}
 				onChange={(event) => {
 					change(event.target.value);
-					setSaved(false);
 				}}
 				autoComplete={autoComplete}
 				className="mt-1.5 w-full rounded-xl border border-[#dfcfac] bg-white px-3 py-2.5 text-sm font-medium outline-none transition focus:border-[#f66a16] focus:ring-2 focus:ring-[#f66a16]/15"
@@ -557,7 +988,7 @@ function AdminAccountSettings() {
 		<form onSubmit={save} className="mt-6 border-t border-[#eadfc9] pt-6">
 			<div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#eadfc9] bg-[#fff8e9] p-3">
 				<p className="px-2 text-sm font-semibold text-[#70452d]">
-					Changes are preview-only until the database is connected.
+					Review your details, then save your administrator profile.
 				</p>
 				<div className="flex items-center gap-2">
 					<button
@@ -569,7 +1000,8 @@ function AdminAccountSettings() {
 					</button>
 					<button
 						type="submit"
-						className="rounded-full border border-[#f66a16] bg-white px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-[#a84716] transition hover:-translate-y-0.5 hover:bg-[#fff0d7]"
+						disabled={saving}
+						className="rounded-full border border-[#f66a16] !bg-[#f66a16] px-4 py-2.5 text-xs font-bold uppercase tracking-wider !text-white shadow-[0_8px_18px_rgba(246,106,22,.22)] transition-all duration-200 ease-out hover:-translate-y-0.5 hover:!bg-[#df5509] hover:shadow-[0_12px_24px_rgba(246,106,22,.3)] active:translate-y-0 active:scale-[.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#f66a16]/45 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:transform-none disabled:opacity-60"
 					>
 						Save changes
 					</button>
@@ -577,10 +1009,10 @@ function AdminAccountSettings() {
 			</div>
 			<div className="flex flex-wrap items-center gap-4 rounded-2xl bg-[#f3e8cc] p-4">
 				<div className="grid size-16 shrink-0 place-items-center overflow-hidden rounded-full border-2 border-white bg-[#f9b562] font-serif text-xl font-bold text-[#64391f]">
-					{preview ? (
+					{user?.imageUrl ? (
 						<img
-							src={preview}
-							alt="Profile preview"
+							src={user.imageUrl}
+							alt="Your Clerk profile"
 							className="size-full object-cover"
 						/>
 					) : (
@@ -590,30 +1022,86 @@ function AdminAccountSettings() {
 				<div>
 					<p className="font-bold">Profile picture</p>
 					<p className="mt-1 text-xs text-[#70452d]">
-						JPG, PNG or WebP. This preview is for the dashboard prototype.
+						Managed securely in your Clerk account.
 					</p>
-					<label className="mt-3 inline-flex cursor-pointer rounded-full border border-[#d6bf9a] bg-white px-3 py-2 text-xs font-bold text-[#64391f] transition hover:border-[#f66a16]">
-						Choose photo
-						<input
-							type="file"
-							accept="image/png,image/jpeg,image/webp"
-							className="sr-only"
-							onChange={(event) => {
-								const file = event.target.files?.[0];
-								if (file) {
-									setPreview(URL.createObjectURL(file));
-									setSaved(false);
-								}
-							}}
-						/>
-					</label>
 				</div>
 			</div>
 			<div className="mt-6 grid gap-4 sm:grid-cols-2">
 				{field("First name", firstName, setFirstName, "given-name")}
 				{field("Last name", lastName, setLastName, "family-name")}
-				{field("Email address", email, setEmail, "email")}
-				{field("Phone number", phone, setPhone, "tel")}
+				<label className="block text-xs font-bold text-[#64391f]">
+					Email address
+					<input
+						value={user?.primaryEmailAddress?.emailAddress ?? ""}
+						readOnly
+						className="mt-1.5 w-full rounded-xl border border-[#dfcfac] bg-[#fff8e9] px-3 py-2.5 text-sm font-medium text-[#70452d] outline-none"
+					/>
+				</label>
+				<div>
+					<div className="flex items-center justify-between">
+						<span className="text-xs font-bold text-[#64391f]">
+							Phone number
+						</span>
+						{phoneVerified && !changingPhone && (
+							<button
+								type="button"
+								onClick={() => setChangingPhone(true)}
+								className="text-xs font-bold text-[#a84716] underline underline-offset-4"
+							>
+								Change phone
+							</button>
+						)}
+					</div>
+					{!phoneVerified || changingPhone ? (
+						<div className="mt-1.5 flex gap-2">
+							<label className="sr-only" htmlFor="admin-phone">
+								Phone number
+							</label>
+							<input
+								id="admin-phone"
+								value={phone}
+								onChange={(event) => setPhone(event.target.value)}
+								autoComplete="tel"
+								className="min-w-0 flex-1 rounded-xl border border-[#dfcfac] bg-white px-3 py-2.5 text-sm font-medium outline-none transition focus:border-[#f66a16]"
+							/>
+							<button
+								type="button"
+								onClick={() => void sendPhoneCode()}
+								disabled={saving}
+								className="rounded-xl bg-[#64391f] px-3 text-xs font-bold text-white disabled:opacity-60"
+							>
+								Send code
+							</button>
+						</div>
+					) : (
+						<p className="mt-1.5 rounded-xl border border-[#dfcfac] bg-[#fff8e9] px-3 py-2.5 text-sm font-medium text-[#56611c]">
+							{phone || "Verified"}
+						</p>
+					)}
+					{phoneId && (
+						<div className="mt-2 flex gap-2">
+							<input
+								value={phoneCode}
+								onChange={(event) =>
+									setPhoneCode(
+										event.target.value.replace(/\D/g, "").slice(0, 6),
+									)
+								}
+								inputMode="numeric"
+								placeholder="6-digit code"
+								className="min-w-0 flex-1 rounded-xl border border-[#dfcfac] px-3 py-2.5 text-sm outline-none focus:border-[#f66a16]"
+							/>
+							<button
+								type="button"
+								onClick={() => void verifyPhone()}
+								disabled={saving}
+								className="rounded-xl bg-[#f66a16] px-3 text-xs font-bold text-white disabled:opacity-60"
+							>
+								Verify
+							</button>
+						</div>
+					)}
+				</div>
 			</div>
 			<div className="mt-4">
 				{field("Street address", address, setAddress, "street-address")}
@@ -627,7 +1115,8 @@ function AdminAccountSettings() {
 			<div className="mt-6 flex flex-wrap items-center gap-4">
 				<button
 					type="submit"
-					className="rounded-full border border-[#f66a16] bg-white px-5 py-3 text-xs font-bold uppercase tracking-wider text-[#a84716] transition hover:-translate-y-0.5 hover:bg-[#fff0d7]"
+					disabled={saving}
+					className="rounded-full border border-[#f66a16] !bg-[#f66a16] px-5 py-3 text-xs font-bold uppercase tracking-wider !text-white shadow-[0_8px_18px_rgba(246,106,22,.22)] transition-all duration-200 ease-out hover:-translate-y-0.5 hover:!bg-[#df5509] hover:shadow-[0_12px_24px_rgba(246,106,22,.3)] active:translate-y-0 active:scale-[.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#f66a16]/45 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:transform-none disabled:opacity-60"
 				>
 					Save changes
 				</button>
@@ -638,13 +1127,15 @@ function AdminAccountSettings() {
 				>
 					Cancel
 				</button>
-				{saved && (
-					<p
-						role="status"
-						className="inline-flex items-center gap-2 text-sm font-bold text-[#56611c]"
-					>
+				{message && (
+					<output className="inline-flex items-center gap-2 text-sm font-bold text-[#56611c]">
 						<CheckCircle2 size={17} />
-						Information saved — preview mode only, no database has been updated.
+						{message}
+					</output>
+				)}
+				{error && (
+					<p role="alert" className="text-sm font-bold text-[#a84716]">
+						{error}
 					</p>
 				)}
 			</div>

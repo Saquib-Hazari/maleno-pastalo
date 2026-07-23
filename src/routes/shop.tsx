@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Check, ChevronDown, Search, SlidersHorizontal } from "lucide-react";
 import { useMemo, useState } from "react";
-import { pastaProducts } from "../lib/store-data";
+import { getStorefrontProducts } from "../features/catalog/catalog.functions";
 
 const categories = [
 	["all", "All pasta"],
@@ -11,6 +11,7 @@ const categories = [
 ] as const;
 
 export const Route = createFileRoute("/shop")({
+	loader: () => getStorefrontProducts(),
 	component: ShopPage,
 	head: () => ({
 		meta: [
@@ -25,13 +26,14 @@ export const Route = createFileRoute("/shop")({
 });
 
 function ShopPage() {
+	const storefrontProducts = Route.useLoaderData();
 	const [query, setQuery] = useState("");
 	const [category, setCategory] = useState("all");
 	const [sort, setSort] = useState("featured");
-	const [added, setAdded] = useState<string | null>(null);
-	const [buying, setBuying] = useState<string | null>(null);
+	const [added, setAdded] = useState<number | null>(null);
+	const [buying, setBuying] = useState<number | null>(null);
 	const products = useMemo(() => {
-		const filtered = pastaProducts.filter(
+		const filtered = storefrontProducts.filter(
 			(product) =>
 				(category === "all" || product.category === category) &&
 				product.name.toLowerCase().includes(query.toLowerCase()),
@@ -42,7 +44,7 @@ function ShopPage() {
 			if (sort === "name") return first.name.localeCompare(second.name);
 			return 0;
 		});
-	}, [query, category, sort]);
+	}, [storefrontProducts, query, category, sort]);
 	const clearFilters = () => {
 		setQuery("");
 		setCategory("all");
@@ -95,16 +97,13 @@ function ShopPage() {
 						<p className="text-[10px] font-bold uppercase tracking-[.16em] text-[#70452d]">
 							Category
 						</p>
-						<div
-							className="mt-3 grid gap-1.5"
-							role="group"
-							aria-label="Pasta categories"
-						>
+						<fieldset className="mt-3 grid gap-1.5">
+							<legend className="sr-only">Pasta categories</legend>
 							{categories.map(([value, label]) => {
 								const count =
 									value === "all"
-										? pastaProducts.length
-										: pastaProducts.filter(
+										? storefrontProducts.length
+										: storefrontProducts.filter(
 												(product) => product.category === value,
 											).length;
 								return (
@@ -134,7 +133,7 @@ function ShopPage() {
 									</button>
 								);
 							})}
-						</div>
+						</fieldset>
 					</div>
 					<button
 						type="button"
@@ -180,6 +179,11 @@ function ShopPage() {
 								className="group transition duration-300 hover:-translate-y-1"
 							>
 								<div className="relative overflow-hidden rounded-2xl bg-[#f3e8cc] p-4 shadow-[0_8px_20px_rgba(100,57,31,.06)]">
+									{product.isSoldOut && (
+										<span className="absolute left-3 top-3 z-10 rounded-full bg-[#64391f] px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-white">
+											Sold out
+										</span>
+									)}
 									<img
 										src={product.image}
 										alt={`${product.name} pasta package`}
@@ -205,19 +209,24 @@ function ShopPage() {
 								<div className="mt-4 flex gap-2">
 									<button
 										type="button"
+										disabled={product.isSoldOut}
 										onClick={() => {
 											setAdded(product.id);
 											window.dispatchEvent(
 												new CustomEvent("pastalo:cart", { detail: 1 }),
 											);
 										}}
-										className="flex-1 rounded-full bg-[#64391f] px-4 py-3 text-[10px] font-bold uppercase tracking-wider text-white"
+										className="flex-1 rounded-full bg-[#64391f] px-4 py-3 text-[10px] font-bold uppercase tracking-wider text-white transition disabled:cursor-not-allowed disabled:bg-[#bda98d]"
 									>
-										{added === product.id ? "Added!" : "Add to cart"}
+										{product.isSoldOut
+											? "Sold out"
+											: added === product.id
+												? "Added!"
+												: "Add to cart"}
 									</button>
 									<button
 										type="button"
-										disabled={buying === product.id}
+										disabled={product.isSoldOut || buying === product.id}
 										onClick={() => {
 											setBuying(product.id);
 											window.dispatchEvent(
@@ -230,7 +239,11 @@ function ShopPage() {
 										}}
 										className={`min-w-28 rounded-full border px-4 py-3 text-[10px] font-bold uppercase tracking-wider ring-1 ring-offset-2 transition-all duration-200 ${buying === product.id ? "border-[#56611c] bg-[#edf1d7] text-[#56611c] ring-[#56611c]/45" : "border-[#70452d] bg-white text-[#64391f] ring-[#70452d]/45 hover:-translate-y-0.5 hover:border-[#f66a16] hover:bg-[#fff0d7] hover:text-[#a84716] hover:ring-[#f66a16]/45"}`}
 									>
-										{buying === product.id ? "Added — one moment" : "Buy now"}
+										{product.isSoldOut
+											? "Sold out"
+											: buying === product.id
+												? "Added — one moment"
+												: "Buy now"}
 									</button>
 								</div>
 							</article>
