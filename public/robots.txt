@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+# Private account, basket, and checkout pages declare noindex in their page metadata.

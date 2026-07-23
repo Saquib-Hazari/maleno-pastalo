@@ -1,0 +1,95 @@
+export const recipes = [
+	{
+		slug: "spaghetti-al-limone",
+		title: "Silky Spaghetti al Limone",
+		description: "Lemon, Parmesan and pepper become a glossy, sunny sauce.",
+		image: "/images/home/recipe-limone-new-desktop.png",
+		time: "20 min",
+		serves: "2 people",
+		difficulty: "Easy",
+		ingredients: [
+			"200g Molino spaghetti",
+			"1 unwaxed lemon",
+			"55g Parmigiano Reggiano",
+			"45g butter",
+			"Freshly cracked black pepper",
+		],
+		steps: [
+			"Bring a wide pan of well-salted water to the boil. Cook spaghetti until just shy of al dente.",
+			"Melt butter gently in a large skillet. Add the finely grated lemon zest and a generous turn of black pepper.",
+			"Lift pasta into the skillet with a splash of cooking water. Toss until the butter begins to coat every strand.",
+			"Take off the heat, add finely grated Parmigiano and toss quickly. Loosen with more pasta water until glossy. Finish with lemon juice.",
+		],
+	},
+	{
+		slug: "classic-pomodoro",
+		title: "Classic Pasta al Pomodoro",
+		description: "A quiet, generous tomato sauce for any night of the week.",
+		image: "/images/home/recipe-pomodoro-new-desktop.png",
+		time: "35 min",
+		serves: "4 people",
+		difficulty: "Easy",
+		ingredients: [
+			"320g Molino penne",
+			"800g ripe tomatoes",
+			"2 garlic cloves",
+			"Extra-virgin olive oil",
+			"Basil leaves",
+		],
+		steps: [
+			"Warm olive oil with lightly crushed garlic until fragrant, then remove the garlic.",
+			"Add tomatoes and a pinch of salt. Simmer gently for 25 minutes until sweet and concentrated.",
+			"Cook penne in well-salted water. Reserve a cup of cooking water before draining.",
+			"Toss pasta through the sauce with a splash of cooking water. Tear over basil and serve immediately.",
+		],
+	},
+	{
+		slug: "garden-spaghetti",
+		title: "Garden Spaghetti",
+		description:
+			"Green herbs, tender vegetables and a bright olive-oil finish.",
+		image: "/images/home/recipe-garden-new-desktop.png",
+		time: "25 min",
+		serves: "2 people",
+		difficulty: "Easy",
+		ingredients: [
+			"200g Molino spaghetti",
+			"1 courgette",
+			"1 cup peas",
+			"Handful of basil and mint",
+			"Lemon and olive oil",
+		],
+		steps: [
+			"Slice courgette into fine ribbons and sauté in olive oil until just tender.",
+			"Blanch peas briefly in the pasta water, then add them to the skillet.",
+			"Cook spaghetti until al dente and add directly to the vegetables with a ladle of pasta water.",
+			"Fold through torn herbs, lemon zest and olive oil until the sauce clings to the pasta.",
+		],
+	},
+	{
+		slug: "slow-sunday-ragu",
+		title: "Slow Sunday Ragù",
+		description:
+			"A deeply savoury family ragù, made patiently and served generously.",
+		image: "/images/home/recipe-ragu-new-desktop.png",
+		time: "2 hr 30 min",
+		serves: "6 people",
+		difficulty: "Weekend project",
+		ingredients: [
+			"400g Molino fusilli",
+			"500g beef mince",
+			"Soffritto vegetables",
+			"Passata",
+			"Red wine",
+			"Milk",
+		],
+		steps: [
+			"Cook finely diced onion, carrot and celery slowly in olive oil until soft and sweet.",
+			"Brown the beef, then add wine and allow it to reduce completely.",
+			"Add passata, a splash of milk and enough water to keep the sauce loose. Simmer gently for two hours.",
+			"Toss fusilli in the ragù with a little pasta water. Serve with Parmigiano and a long Sunday lunch.",
+		],
+	},
+] as const;
+
+export type Recipe = (typeof recipes)[number];
