@@ -26,6 +26,8 @@ import {
 	XAxis,
 	YAxis,
 } from "recharts";
+import { getMyDashboardData } from "../features/analytics/analytics.functions";
+import type { LiveOrder } from "../features/analytics/analytics.service";
 import {
 	getMyProfile,
 	saveMyProfile,
@@ -60,24 +62,51 @@ const nav = [
 	[BookOpen, "Recipes"],
 	[Settings, "Settings"],
 ] as const;
-const pantryData = [
-	{ week: "W1", meals: 2 },
-	{ week: "W2", meals: 4 },
-	{ week: "W3", meals: 3 },
-	{ week: "W4", meals: 5 },
-];
+const formatMoney = (cents: number) =>
+	new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR" }).format(
+		cents / 100,
+	);
+
 function DashboardPage() {
 	const { user } = useUser();
 	const clerk = useClerk();
 	const [activeView, setActiveView] =
 		useState<(typeof nav)[number][1]>("Overview");
+	const [dashboard, setDashboard] = useState<{
+		orders: LiveOrder[];
+		weeklyMeals: Array<{ week: string; meals: number }>;
+	} | null>(null);
 	const displayName = user?.fullName || user?.firstName || "Luca";
 	const initial = displayName.charAt(0).toUpperCase();
+	useEffect(() => {
+		let active = true;
+		const refresh = () =>
+			void getMyDashboardData()
+				.then((data) => active && setDashboard(data))
+				.catch(() => undefined);
+		refresh();
+		const timer = window.setInterval(refresh, 15_000);
+		return () => {
+			active = false;
+			window.clearInterval(timer);
+		};
+	}, []);
+	const latestOrder = dashboard?.orders[0];
+	const pantryData = dashboard?.weeklyMeals ?? [];
+	const monthMeals = pantryData.reduce((total, week) => total + week.meals, 0);
 	const openSettings = () => {
 		setActiveView("Settings");
 		window.requestAnimationFrame(() => {
 			document
 				.getElementById("profile")
+				?.scrollIntoView({ behavior: "smooth", block: "start" });
+		});
+	};
+	const openOrders = () => {
+		setActiveView("Orders");
+		window.requestAnimationFrame(() => {
+			document
+				.getElementById("orders")
 				?.scrollIntoView({ behavior: "smooth", block: "start" });
 		});
 	};
@@ -182,33 +211,46 @@ function DashboardPage() {
 										Latest order
 									</p>
 									<h2 className="mt-2 font-serif text-2xl font-bold">
-										Order #MP-2841
+										{latestOrder ? latestOrder.orderNumber : "No orders yet"}
 									</h2>
 								</div>
 								<span className="rounded-full bg-[#edf1d7] px-3 py-1 text-xs font-bold text-[#56611c]">
-									On its way
+									{latestOrder?.status ?? "Ready when you are"}
 								</span>
 							</div>
 							<div className="mt-6 grid gap-4 border-y border-[#eadfc9] py-5 sm:grid-cols-3">
 								<div>
 									<p className="text-xs text-[#70452d]">Estimated arrival</p>
-									<p className="mt-1 font-bold">Friday, 18 Oct</p>
+									<p className="mt-1 font-bold">
+										{latestOrder
+											? new Intl.DateTimeFormat("en-IN", {
+													dateStyle: "medium",
+												}).format(new Date(latestOrder.createdAt))
+											: "Choose your first pasta"}
+									</p>
 								</div>
 								<div>
 									<p className="text-xs text-[#70452d]">Total</p>
-									<p className="mt-1 font-bold">$42.00</p>
+									<p className="mt-1 font-bold">
+										{latestOrder ? formatMoney(latestOrder.totalCents) : "—"}
+									</p>
 								</div>
 								<div>
 									<p className="text-xs text-[#70452d]">Items</p>
-									<p className="mt-1 font-bold">3 artisan packs</p>
+									<p className="mt-1 font-bold">
+										{latestOrder
+											? `${latestOrder.itemCount} artisan packs`
+											: "—"}
+									</p>
 								</div>
 							</div>
-							<a
-								href="#order"
+							<button
+								type="button"
+								onClick={openOrders}
 								className="mt-5 flex items-center justify-between text-sm font-bold text-[#a84716]"
 							>
 								Track your order <ChevronRight size={17} />
-							</a>
+							</button>
 						</section>
 						<aside className="rounded-[1.75rem] bg-[#f66a16] p-6 text-white">
 							<Sparkles size={22} />
@@ -229,7 +271,7 @@ function DashboardPage() {
 						</aside>
 					</div>
 				) : (
-					<UserWorkspace view={activeView} />
+					<UserWorkspace view={activeView} orders={dashboard?.orders ?? []} />
 				)}
 				<div className="mt-7 grid gap-7 xl:grid-cols-[1.25fr_.75fr]">
 					<section className="rounded-[1.75rem] border border-[#e0cfae] bg-white/70 p-6">
@@ -243,7 +285,7 @@ function DashboardPage() {
 								</h2>
 							</div>
 							<span className="rounded-full bg-[#edf1d7] px-3 py-1 text-xs font-bold text-[#56611c]">
-								14 meals
+								{monthMeals} meals
 							</span>
 						</div>
 						<div
@@ -292,7 +334,14 @@ function DashboardPage() {
 							</div>
 							<div>
 								<dt className="text-[#70452d]">Member since</dt>
-								<dd className="mt-1 font-semibold">March 2024</dd>
+								<dd className="mt-1 font-semibold">
+									{user?.createdAt
+										? new Intl.DateTimeFormat("en-IN", {
+												month: "long",
+												year: "numeric",
+											}).format(user.createdAt)
+										: "Not available"}
+								</dd>
 							</div>
 						</dl>
 						<button
@@ -354,8 +403,10 @@ function DashboardPage() {
 
 function UserWorkspace({
 	view,
+	orders,
 }: {
 	view: Exclude<(typeof nav)[number][1], "Overview" | "Settings">;
+	orders: LiveOrder[];
 }) {
 	const copy = {
 		Orders: ["Your orders", "Keep track of every pasta delivery."],
@@ -364,31 +415,24 @@ function UserWorkspace({
 	} as const;
 	const [title, description] = copy[view];
 	return (
-		<section className="mt-9 rounded-[1.75rem] bg-white p-6 shadow-[0_12px_32px_rgba(100,57,31,.08)]">
+		<section
+			id="orders"
+			className="mt-9 scroll-mt-8 rounded-[1.75rem] bg-white p-6 shadow-[0_12px_32px_rgba(100,57,31,.08)]"
+		>
 			<p className="text-[10px] font-bold uppercase tracking-wider text-[#a84716]">
 				Your cucina
 			</p>
 			<h2 className="mt-2 font-serif text-3xl font-bold">{title}</h2>
 			<p className="mt-2 text-sm text-[#70452d]">{description}</p>
 			{view === "Orders" ? (
-				<div className="mt-6 rounded-2xl border border-[#eadfc9] p-5">
-					<div className="flex flex-wrap items-center justify-between gap-3">
-						<div>
-							<p className="font-bold">Order #MP-2841</p>
-							<p className="mt-1 text-sm text-[#70452d]">
-								3 artisan packs · $42.00
-							</p>
+				<div className="mt-6 space-y-3">
+					{orders.length ? (
+						orders.map((order) => <OrderDetail key={order.id} order={order} />)
+					) : (
+						<div className="rounded-2xl border border-dashed border-[#decba8] bg-[#fff8e9] p-6 text-sm text-[#70452d]">
+							Your verified purchases will appear here after checkout.
 						</div>
-						<span className="rounded-full bg-[#edf1d7] px-3 py-1 text-xs font-bold text-[#56611c]">
-							On its way
-						</span>
-					</div>
-					<button
-						type="button"
-						className="mt-4 text-sm font-bold text-[#a84716]"
-					>
-						View delivery details
-					</button>
+					)}
 				</div>
 			) : (
 				<div className="mt-6 rounded-2xl border border-dashed border-[#decba8] bg-[#fff8e9] p-6 text-sm text-[#70452d]">
@@ -396,6 +440,85 @@ function UserWorkspace({
 				</div>
 			)}
 		</section>
+	);
+}
+
+function OrderDetail({ order }: { order: LiveOrder }) {
+	const stages = [
+		"Order confirmed",
+		"Packed for the kitchen",
+		"On its way",
+		"Delivered",
+	];
+	const currentStage =
+		order.status === "fulfilled" ? 3 : order.status === "processing" ? 1 : 0;
+	return (
+		<article className="rounded-2xl border border-[#eadfc9] p-5">
+			<div className="flex flex-wrap items-center justify-between gap-3">
+				<div>
+					<p className="font-bold">{order.orderNumber}</p>
+					<p className="mt-1 text-sm text-[#70452d]">
+						Placed{" "}
+						{new Intl.DateTimeFormat("en-IN", { dateStyle: "medium" }).format(
+							new Date(order.createdAt),
+						)}{" "}
+						· {formatMoney(order.totalCents)}
+					</p>
+				</div>
+				<span className="rounded-full bg-[#edf1d7] px-3 py-1 text-xs font-bold capitalize text-[#56611c]">
+					{order.status}
+				</span>
+			</div>
+			<div className="mt-5 grid gap-5 border-y border-[#eadfc9] py-5 sm:grid-cols-2">
+				<div>
+					<p className="text-[10px] font-bold uppercase tracking-wider text-[#a84716]">
+						Order details
+					</p>
+					<ul className="mt-2 space-y-1 text-sm text-[#70452d]">
+						{order.items.map((item) => (
+							<li key={`${item.name}-${item.quantity}`}>
+								{item.quantity} × {item.name}
+							</li>
+						))}
+					</ul>
+				</div>
+				<div>
+					<p className="text-[10px] font-bold uppercase tracking-wider text-[#a84716]">
+						Delivery address
+					</p>
+					<p className="mt-2 text-sm leading-6 text-[#70452d]">
+						{order.deliveryAddress ??
+							"Address will be confirmed after checkout."}
+					</p>
+				</div>
+			</div>
+			<div className="mt-5">
+				<p className="text-[10px] font-bold uppercase tracking-wider text-[#a84716]">
+					Tracking
+				</p>
+				<ol className="mt-4 grid gap-3 sm:grid-cols-4">
+					{stages.map((label, index) => (
+						<li
+							key={label}
+							className="flex items-center gap-2 text-xs font-semibold"
+						>
+							<span
+								className={`grid size-6 place-items-center rounded-full ${index <= currentStage ? "bg-[#f66a16] text-white" : "bg-[#f3e8cc] text-[#96745c]"}`}
+							>
+								{index < currentStage ? "✓" : index + 1}
+							</span>
+							<span
+								className={
+									index <= currentStage ? "text-[#64391f]" : "text-[#96745c]"
+								}
+							>
+								{label}
+							</span>
+						</li>
+					))}
+				</ol>
+			</div>
+		</article>
 	);
 }
 

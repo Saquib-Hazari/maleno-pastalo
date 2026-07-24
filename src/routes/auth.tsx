@@ -296,13 +296,13 @@ function AuthPage() {
 						key={`${mode}-${needsVerification}`}
 						className="auth-panel-motion"
 					>
-						<h1 className="mt-9 font-serif text-4xl font-bold text-[#64391f]">
+						<h2 className="mt-9 font-serif text-4xl font-bold text-[#64391f]">
 							{mode === "signin"
 								? "Welcome back."
 								: needsVerification
 									? "Check your inbox."
 									: "Join the famiglia."}
-						</h1>
+						</h2>
 						<p className="mt-2 text-sm leading-6 text-[#70452d]">
 							{mode === "signin"
 								? "Sign in to revisit your favourites and manage your orders."

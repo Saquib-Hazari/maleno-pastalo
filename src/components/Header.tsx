@@ -158,7 +158,7 @@ export default function Header() {
 					<div
 						className={`border-t border-[#70452d]/10 px-5 py-4 transition-opacity duration-200 ${menuOpen ? "opacity-100 delay-100" : "pointer-events-none opacity-0"}`}
 					>
-						{navigation.filter(([label]) => label !== "Shop").map(([label, href]) => (
+						{navigation.map(([label, href]) => (
 							<a
 								onClick={closeMenu}
 								key={label}

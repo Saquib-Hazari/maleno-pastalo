@@ -2,7 +2,19 @@ import { createFileRoute } from "@tanstack/react-router";
 import { ArrowRight, Clock3, UsersRound } from "lucide-react";
 import { recipes } from "../lib/recipes";
 
-export const Route = createFileRoute("/recipes/")({ component: RecipesIndex });
+export const Route = createFileRoute("/recipes/")({
+	head: () => ({
+		meta: [
+			{ title: "Italian pasta recipes — Molino Pastello" },
+			{
+				name: "description",
+				content:
+					"Four thoughtful Italian pasta recipes from the Molino Pastello kitchen, made for generous everyday cooking.",
+			},
+		],
+	}),
+	component: RecipesIndex,
+});
 
 function RecipesIndex() {
 	return (

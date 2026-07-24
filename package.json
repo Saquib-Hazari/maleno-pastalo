@@ -13,13 +13,15 @@
     "format": "biome format",
     "lint": "biome lint",
     "check": "biome check",
+    "test": "vitest run --config vitest.config.ts",
+    "test:watch": "vitest --config vitest.config.ts",
     "deploy": "npm run build && wrangler deploy",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
     "db:pull": "drizzle-kit pull",
-    "db:studio": "drizzle-kit studio"
-    ,"db:seed:catalog": "tsx src/db/seed-catalog.ts"
+    "db:studio": "drizzle-kit studio",
+    "db:seed:catalog": "tsx src/db/seed-catalog.ts"
   },
   "dependencies": {
     "@clerk/tanstack-react-start": "^1.4.21",
@@ -64,6 +66,7 @@
     "tsx": "^4.21.0",
     "typescript": "^6.0.2",
     "vite": "^8.0.0",
+    "vitest": "^4.1.10",
     "wrangler": "^4.70.0"
   },
   "pnpm": {

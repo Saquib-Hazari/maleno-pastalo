@@ -28,6 +28,8 @@ import {
 	XAxis,
 	YAxis,
 } from "recharts";
+import { getAdminDashboardData } from "../features/analytics/analytics.functions";
+import type { LiveOrder } from "../features/analytics/analytics.service";
 import {
 	deleteCatalogProduct,
 	getAdminCatalog,
@@ -69,20 +71,12 @@ const nav = [
 	[BarChart3, "Analytics"],
 	[Settings, "Settings"],
 ] as const;
-const orders = [
-	["#MP-2841", "Luca Sarti", "3 items", "$42.00", "In transit"],
-	["#MP-2840", "Mia Romano", "2 items", "$28.00", "Preparing"],
-	["#MP-2839", "Elena Ricci", "4 items", "$56.00", "Delivered"],
-];
-const revenueData = [
-	{ month: "May", revenue: 3200 },
-	{ month: "Jun", revenue: 4100 },
-	{ month: "Jul", revenue: 3650 },
-	{ month: "Aug", revenue: 5200 },
-	{ month: "Sep", revenue: 6100 },
-	{ month: "Oct", revenue: 7820 },
-];
 const reportingPeriods = ["October 2026", "September 2026", "August 2026"];
+const formatMoney = (cents: number) =>
+	new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR" }).format(
+		cents / 100,
+	);
+
 function AdminPage() {
 	const { user } = useUser();
 	const clerk = useClerk();
@@ -90,7 +84,38 @@ function AdminPage() {
 	const [activeView, setActiveView] =
 		useState<(typeof nav)[number][1]>("Overview");
 	const [accountOpen, setAccountOpen] = useState(false);
+	const [dashboard, setDashboard] = useState<{
+		orders: LiveOrder[];
+		revenueData: Array<{ month: string; revenue: number }>;
+		metrics: {
+			totalRevenueCents: number;
+			paidOrders: number;
+			newCustomers: number;
+			profiles: number;
+		};
+	} | null>(null);
 	const displayName = user?.fullName || user?.firstName || "Administrator";
+	useEffect(() => {
+		let active = true;
+		const refresh = () =>
+			void getAdminDashboardData()
+				.then((data) => active && setDashboard(data))
+				.catch(() => undefined);
+		refresh();
+		const timer = window.setInterval(refresh, 15_000);
+		return () => {
+			active = false;
+			window.clearInterval(timer);
+		};
+	}, []);
+	const liveOrders = dashboard?.orders ?? [];
+	const pendingOrders = liveOrders.filter(
+		(order) => order.status === "pending",
+	).length;
+	const confirmedOrders = liveOrders.filter(
+		(order) => order.status === "confirmed",
+	).length;
+	const logisticsTotal = Math.max(1, pendingOrders + confirmedOrders);
 	return (
 		<main className="min-h-screen bg-[#fff8e9] text-[#64391f] lg:grid lg:grid-cols-[250px_1fr]">
 			<aside className="bg-[#64391f] px-5 py-5 text-[#fff8e9] lg:min-h-screen lg:px-7 lg:py-8">
@@ -251,23 +276,23 @@ function AdminPage() {
 						>
 							<Metric
 								label="Total revenue"
-								value="$24,860"
-								change="↑ 12.6% from last month"
+								value={formatMoney(dashboard?.metrics.totalRevenueCents ?? 0)}
+								change="Paid orders only · updates every 15 seconds"
 							/>
 							<Metric
-								label="Gross profit"
-								value="$14,112"
-								change="↑ 8.2% from last month"
+								label="Paid orders"
+								value={String(dashboard?.metrics.paidOrders ?? 0)}
+								change="Verified Razorpay payments"
 							/>
 							<Metric
-								label="Orders fulfilled"
-								value="682"
-								change="↑ 16.1% from last month"
+								label="Customer emails"
+								value={String(dashboard?.metrics.newCustomers ?? 0)}
+								change="Customers with saved orders"
 							/>
 							<Metric
-								label="New customers"
-								value="218"
-								change="↑ 7.4% from last month"
+								label="Saved profiles"
+								value={String(dashboard?.metrics.profiles ?? 0)}
+								change="Registered customer records"
 							/>
 						</section>
 						<div className="mt-7 grid gap-7 xl:grid-cols-[1.3fr_.7fr]">
@@ -295,7 +320,7 @@ function AdminPage() {
 								>
 									<ResponsiveContainer width="100%" height="100%">
 										<AreaChart
-											data={revenueData}
+											data={dashboard?.revenueData ?? []}
 											margin={{ top: 8, right: 4, left: -22, bottom: 0 }}
 										>
 											<defs>
@@ -336,7 +361,7 @@ function AdminPage() {
 											<YAxis hide domain={[0, "dataMax + 1000"]} />
 											<Tooltip
 												formatter={(value) => [
-													`$${Number(value).toLocaleString()}`,
+													formatMoney(Math.round(Number(value) * 100)),
 													"Revenue",
 												]}
 												contentStyle={{
@@ -361,27 +386,39 @@ function AdminPage() {
 								<p className="mt-5 text-[10px] font-bold uppercase tracking-wider text-[#e9efbd]">
 									Order logistics
 								</p>
-								<h2 className="mt-2 font-serif text-3xl font-bold">92.4%</h2>
+								<h2 className="mt-2 font-serif text-3xl font-bold">
+									{liveOrders.length}
+								</h2>
 								<p className="mt-2 text-sm text-[#f1f5cd]">
-									Orders delivered on time this month.
+									Live orders currently recorded in Neon.
 								</p>
 								<div className="mt-7 space-y-4">
 									<div>
 										<div className="mb-1 flex justify-between text-xs">
-											<span>Preparing</span>
-											<span>18</span>
+											<span>Awaiting payment</span>
+											<span>{pendingOrders}</span>
 										</div>
 										<div className="h-2 rounded-full bg-black/15">
-											<div className="h-full w-[35%] rounded-full bg-[#f9cb8b]" />
+											<div
+												className="h-full rounded-full bg-[#f9cb8b]"
+												style={{
+													width: `${(pendingOrders / logisticsTotal) * 100}%`,
+												}}
+											/>
 										</div>
 									</div>
 									<div>
 										<div className="mb-1 flex justify-between text-xs">
-											<span>In transit</span>
-											<span>44</span>
+											<span>Confirmed</span>
+											<span>{confirmedOrders}</span>
 										</div>
 										<div className="h-2 rounded-full bg-black/15">
-											<div className="h-full w-[70%] rounded-full bg-[#f9cb8b]" />
+											<div
+												className="h-full rounded-full bg-[#f9cb8b]"
+												style={{
+													width: `${(confirmedOrders / logisticsTotal) * 100}%`,
+												}}
+											/>
 										</div>
 									</div>
 								</div>
@@ -422,17 +459,21 @@ function AdminPage() {
 										</tr>
 									</thead>
 									<tbody>
-										{orders.map(([id, customer, contents, total, status]) => (
-											<tr key={id} className="border-b border-[#f0e8d7]">
-												<td className="py-4 font-bold">{id}</td>
-												<td className="py-4">{customer}</td>
-												<td className="py-4 text-[#70452d]">{contents}</td>
-												<td className="py-4 font-bold">{total}</td>
+										{liveOrders.slice(0, 6).map((order) => (
+											<tr key={order.id} className="border-b border-[#f0e8d7]">
+												<td className="py-4 font-bold">{order.orderNumber}</td>
+												<td className="py-4">{order.email}</td>
+												<td className="py-4 text-[#70452d]">
+													{order.itemCount} items
+												</td>
+												<td className="py-4 font-bold">
+													{formatMoney(order.totalCents)}
+												</td>
 												<td className="py-4">
 													<span
-														className={`rounded-full px-3 py-1 text-xs font-bold ${status === "Delivered" ? "bg-[#edf1d7] text-[#56611c]" : status === "Preparing" ? "bg-[#fff0d7] text-[#a84716]" : "bg-[#f4e6d1] text-[#70452d]"}`}
+														className={`rounded-full px-3 py-1 text-xs font-bold ${order.status === "confirmed" ? "bg-[#edf1d7] text-[#56611c]" : "bg-[#fff0d7] text-[#a84716]"}`}
 													>
-														{status}
+														{order.status}
 													</span>
 												</td>
 											</tr>
@@ -443,7 +484,7 @@ function AdminPage() {
 						</section>
 					</>
 				) : (
-					<AdminWorkspace view={activeView} />
+					<AdminWorkspace view={activeView} orders={liveOrders} />
 				)}
 			</section>
 		</main>
@@ -452,8 +493,10 @@ function AdminPage() {
 
 function AdminWorkspace({
 	view,
+	orders: liveOrders,
 }: {
 	view: Exclude<(typeof nav)[number][1], "Overview">;
+	orders: LiveOrder[];
 }) {
 	const copy = {
 		Orders: ["Orders", "Review and update the latest fulfilment activity."],
@@ -485,18 +528,20 @@ function AdminWorkspace({
 							</tr>
 						</thead>
 						<tbody>
-							{orders.map(([id, customer, items, total, status]) => (
-								<tr key={id} className="border-b border-[#f0e8d7]">
-									<td className="py-4 font-bold">{id}</td>
-									<td className="py-4">{customer}</td>
-									<td className="py-4">{items}</td>
-									<td className="py-4 font-bold">{total}</td>
+							{liveOrders.map((order) => (
+								<tr key={order.id} className="border-b border-[#f0e8d7]">
+									<td className="py-4 font-bold">{order.orderNumber}</td>
+									<td className="py-4">{order.email}</td>
+									<td className="py-4">{order.itemCount} items</td>
+									<td className="py-4 font-bold">
+										{formatMoney(order.totalCents)}
+									</td>
 									<td className="py-4">
 										<button
 											type="button"
 											className="rounded-full bg-[#f3e8cc] px-3 py-1 text-xs font-bold text-[#64391f] transition hover:bg-[#f9b562]"
 										>
-											{status}
+											{order.status}
 										</button>
 									</td>
 								</tr>
@@ -506,11 +551,31 @@ function AdminWorkspace({
 				</div>
 			) : view === "Products" ? (
 				<CatalogManager />
+			) : view === "Analytics" ? (
+				<div className="mt-6 grid gap-4 sm:grid-cols-3">
+					<div className="rounded-2xl border border-[#eadfc9] bg-[#fff8e9] p-5">
+						<p className="text-xs text-[#70452d]">Recorded orders</p>
+						<p className="mt-2 font-serif text-3xl font-bold">
+							{liveOrders.length}
+						</p>
+					</div>
+					<div className="rounded-2xl border border-[#eadfc9] bg-[#fff8e9] p-5">
+						<p className="text-xs text-[#70452d]">Confirmed payments</p>
+						<p className="mt-2 font-serif text-3xl font-bold">
+							{
+								liveOrders.filter((order) => order.status === "confirmed")
+									.length
+							}
+						</p>
+					</div>
+					<div className="rounded-2xl border border-[#eadfc9] bg-[#fff8e9] p-5">
+						<p className="text-xs text-[#70452d]">Live refresh</p>
+						<p className="mt-2 font-serif text-3xl font-bold">15s</p>
+					</div>
+				</div>
 			) : (
 				<div className="mt-6 rounded-2xl border border-dashed border-[#decba8] bg-[#fff8e9] p-6 text-sm text-[#70452d]">
-					This interactive workspace is ready for your live data connection. The
-					dashboard navigation, settings and account actions now work in the
-					interface.
+					This workspace is ready for the next operational feature.
 				</div>
 			)}
 		</section>

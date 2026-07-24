@@ -161,7 +161,7 @@ function ProductPage() {
 							Add to basket
 						</button>
 						<a
-							href="/cart"
+							href={`/checkout?variantId=2&quantity=${quantity}`}
 							className="mt-3 block w-full rounded-full border border-[#70452d] px-5 py-4 text-center text-xs font-bold uppercase tracking-[.16em] text-[#64391f] no-underline"
 						>
 							Buy now

@@ -1,8 +1,21 @@
 import { createFileRoute, notFound } from "@tanstack/react-router";
-import { ArrowLeft, Clock3, ChefHat, UsersRound } from "lucide-react";
+import { ArrowLeft, ChefHat, Clock3, UsersRound } from "lucide-react";
 import { recipes } from "../lib/recipes";
 
 export const Route = createFileRoute("/recipes/$slug")({
+	head: ({ params }) => {
+		const recipe = recipes.find((item) => item.slug === params.slug);
+		return {
+			meta: [
+				{ title: `${recipe?.title ?? "Recipe"} — Molino Pastello` },
+				{
+					name: "description",
+					content:
+						recipe?.description ?? "A Molino Pastello Italian pasta recipe.",
+				},
+			],
+		};
+	},
 	loader: ({ params }) => {
 		const recipe = recipes.find((item) => item.slug === params.slug);
 		if (!recipe) throw notFound();
@@ -12,7 +25,7 @@ export const Route = createFileRoute("/recipes/$slug")({
 });
 
 function RecipePage() {
-	const recipe = Route.useLoaderData();
+	const recipe = Route.useLoaderData() as (typeof recipes)[number];
 	return (
 		<main className="bg-[#fff8e9] pb-20 text-[#64391f]">
 			<section className="mx-auto max-w-[1200px] px-5 pt-8 sm:pt-12">

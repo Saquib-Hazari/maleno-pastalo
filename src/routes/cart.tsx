@@ -184,13 +184,18 @@ function CartPage() {
 								</p>
 							)}
 						</form>
-						<button
-							type="button"
-							disabled={!items.length}
-							className="mt-5 w-full rounded-full bg-[#f66a16] px-5 py-4 text-xs font-bold uppercase tracking-[.16em] text-white transition hover:bg-[#e6580b] disabled:cursor-not-allowed disabled:opacity-50"
-						>
-							Proceed to checkout
-						</button>
+						{items.length ? (
+							<a
+								href="/checkout?variantId=2&quantity=1"
+								className="mt-5 block w-full rounded-full bg-[#f66a16] px-5 py-4 text-center text-xs font-bold uppercase tracking-[.16em] text-white no-underline transition hover:bg-[#e6580b]"
+							>
+								Proceed to checkout
+							</a>
+						) : (
+							<span className="mt-5 block w-full rounded-full bg-[#f66a16] px-5 py-4 text-center text-xs font-bold uppercase tracking-[.16em] text-white opacity-50">
+								Proceed to checkout
+							</span>
+						)}
 						<p className="mt-4 text-center text-xs leading-5 text-[#f6d9b1]">
 							Free delivery on orders over $40. Secure checkout.
 						</p>

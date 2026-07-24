@@ -1,316 +1,246 @@
-Welcome to your new TanStack Start app!
+# Molino Pastello
 
-# Getting Started
+<p align="center">
+  <img src="public/images/brand/molino-wordmark-horizontal.png" alt="Molino Pastello" width="300" />
+</p>
 
-To run this application:
+> A premium, full-stack Italian pasta storefront built to showcase polished ecommerce UX, secure checkout flows, role-based dashboards, and a scalable commerce foundation.
+
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.0-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![React](https://img.shields.io/badge/React-19-149eca?logo=react&logoColor=white)](https://react.dev/)
+[![TanStack Start](https://img.shields.io/badge/TanStack_Start-Framework-ff4154?logo=tanstack&logoColor=white)](https://tanstack.com/start)
+[![Cloudflare Workers](https://img.shields.io/badge/Cloudflare-Workers-F38020?logo=cloudflare&logoColor=white)](https://workers.cloudflare.com/)
+
+<p align="center">
+  <a href="#features">Features</a> ·
+  <a href="#tech-stack">Tech stack</a> ·
+  <a href="#quick-start">Quick start</a> ·
+  <a href="#testing">Testing</a> ·
+  <a href="#deployment">Deployment</a> ·
+  <a href="#socials">Socials</a>
+</p>
+
+> Replace the links below once deployed.
+
+[Live site](https://your-domain.com) · [Portfolio](https://your-portfolio.com) · [Report a bug](https://github.com/your-username/molino-pastello/issues) · [Request a feature](https://github.com/your-username/molino-pastello/issues)
+
+## Overview
+
+Molino Pastello brings an editorial Italian-food visual language to a modern ecommerce experience. Customers can browse live catalogue inventory, check out securely with Razorpay, receive a branded order receipt, manage delivery details, and view their account dashboard. Administrators have a protected dashboard for catalogue and inventory management.
+
+The project is intentionally structured around domain features—catalogue, profiles, analytics, and payments—so it can grow from a showcase into a real store.
+
+## Screenshots
+
+Add exported screenshots to `docs/screenshots/` and replace the placeholder paths below.
+
+| Home | Shop |
+| --- | --- |
+| ![Molino Pastello home page](docs/screenshots/home.png) | ![Molino Pastello shop page](docs/screenshots/shop.png) |
+
+| Product details | Customer dashboard |
+| --- | --- |
+| ![Molino Pastello product page](docs/screenshots/product.png) | ![Molino Pastello customer dashboard](docs/screenshots/dashboard.png) |
+
+| Admin dashboard | Checkout |
+| --- | --- |
+| ![Molino Pastello admin dashboard](docs/screenshots/admin.png) | ![Molino Pastello Razorpay checkout](docs/screenshots/checkout.png) |
+
+## Features
+
+### Storefront
+
+- Editorial, responsive homepage, shop, product, about, recipe, legal, cart, and checkout pages.
+- Brand-consistent responsive imagery, motion, navigation, accessible controls, and semantic headings.
+- Database-driven product availability with clear sold-out states.
+- Search, categories, filters, product details, reviews, recipes, and purchase paths.
+- Unique metadata on public marketing pages with descriptive titles and meta descriptions.
+
+### Identity and roles
+
+- Clerk-powered email/password and Google authentication.
+- Role-aware routes and dashboards for customers and the administrator.
+- Profile details, saved delivery information, verified phone workflow, and account settings.
+
+### Ecommerce and orders
+
+- Razorpay INR checkout with server-created orders and server-side HMAC payment verification.
+- Atomic Neon/Postgres finalization for inventory, payment, order status, and inventory movements.
+- Signed Razorpay webhook endpoint for recovery when a browser closes after payment.
+- Delivery/tracking view and real-time dashboard order data.
+- Branded transactional receipt emails through Resend.
+
+### Admin operations
+
+- Catalogue creation, editing, deletion, price updates, and inventory adjustments.
+- Live order, customer, product, sales, and inventory analytics.
+- Charts built with Recharts and a responsive dashboard UI.
+
+## Tech stack
+
+| Area | Tools |
+| --- | --- |
+| Framework | TanStack Start, TanStack Router, React 19, TypeScript |
+| Styling | Tailwind CSS, shadcn/ui patterns, Radix UI, Lucide icons, GSAP |
+| Authentication | Clerk |
+| Database | Neon Postgres, Drizzle ORM |
+| Payments | Razorpay |
+| Email | Resend |
+| Charts | Recharts |
+| Quality | Vitest, Biome, TypeScript, Chrome DevTools, Lighthouse |
+| Hosting | Cloudflare Workers, Wrangler |
+
+## Architecture
+
+```text
+Browser
+  └─ TanStack Start routes and shared UI
+       ├─ Clerk authentication and role checks
+       ├─ Feature services
+       │    ├─ Catalogue and inventory
+       │    ├─ Profiles
+       │    ├─ Analytics
+       │    └─ Payments and orders
+       ├─ Neon Postgres via Drizzle / serverless driver
+       ├─ Razorpay checkout + signed webhook
+       └─ Resend transactional receipts
+```
+
+The backend keeps business rules server-side. Prices and inventory are read from the database, Razorpay signatures are verified on the server, and payment finalization is idempotent to protect against duplicate browser callbacks or webhook retries.
+
+## Quick start
+
+### Prerequisites
+
+- Node.js 22+
+- npm
+- A Neon Postgres database
+- Clerk application keys
+- Razorpay test keys
+- Resend API key for receipts
+
+### Install
 
 ```bash
+git clone https://github.com/your-username/molino-pastello.git
+cd molino-pastello
 npm install
+cp .env.example .env.local
+```
+
+Fill in `.env.local` with your own values. Never commit this file.
+
+```env
+DATABASE_URL=
+VITE_CLERK_PUBLISHABLE_KEY=
+CLERK_SECRET_KEY=
+VITE_RAZORPAY_KEY_ID=
+RAZORPAY_KEY_SECRET=
+RAZORPAY_WEBHOOK_SECRET=
+RESEND_API_KEY=
+EMAIL_FROM="Molino Pastello <orders@your-domain.com>"
+APP_URL=http://localhost:3000
+```
+
+Start development:
+
+```bash
 npm run dev
 ```
 
-# Building For Production
+Visit [http://localhost:3000](http://localhost:3000).
 
-To build this application for production:
+## Database commands
 
 ```bash
+npm run db:generate      # Generate Drizzle migration files
+npm run db:migrate       # Apply migrations
+npm run db:studio        # Open Drizzle Studio
+npm run db:seed:catalog  # Seed the product catalogue
+```
+
+See [commerce system design](docs/commerce-catalog-system-design.md), [profile system design](docs/profile-persistence-system-design.md), and [transactional email guide](docs/transactional-order-email.md) for the implementation notes.
+
+## Testing
+
+```bash
+npm test
+npx tsc --noEmit
 npm run build
 ```
 
-## Styling
+The test suite is in a dedicated `tests/` directory:
 
-This project uses [Tailwind CSS](https://tailwindcss.com/) for styling.
+```text
+tests/
+├── unit/          # Payment and catalogue business rules
+└── integration/   # Mocked Neon transaction boundary tests
+```
 
-### Removing Tailwind CSS
+Tests mock external boundaries, so they never charge Razorpay, email customers, or mutate your real Neon database.
 
-If you prefer not to use Tailwind CSS:
+## Quality standards
 
-1. Remove the demo pages in `src/routes/demo/`
-2. Replace the Tailwind import in `src/styles.css` with your own styles
-3. Remove `tailwindcss()` from the plugins array in `vite.config.ts`
-4. Remove `@tailwindcss/vite` and `tailwindcss` from `package.json`
+Every feature change should meet these checks:
 
-## Linting & Formatting
+- Mobile-first layout review at 375px, tablet, and desktop widths.
+- Semantic landmarks, one primary `h1`, labels, focus states, keyboard support, and descriptive alt text.
+- Unique metadata for public pages and `noindex` on private or transactional routes.
+- Chrome DevTools review for console errors, accessibility, SEO, responsive layout, Core Web Vitals, and layout shift.
+- `npm test`, `npx tsc --noEmit`, and `npm run build` must pass.
 
-This project uses [Biome](https://biomejs.dev/) for linting and formatting. The following scripts are available:
+## Deployment
 
+This application is configured for Cloudflare Workers.
 
 ```bash
-npm run lint
-npm run format
-npm run check
+npx wrangler login
+npm run deploy
 ```
 
-## Pastalo UI quality gate
-
-Every page change must meet this quality gate before it is handed off:
-
-- Match the Molino Pastello visual system: warm cream, vivid orange, cocoa, olive, editorial serif type, and clear brand contrast.
-- Check responsive layouts at 375px, tablet, and desktop. Product packaging and logo artwork must use `object-contain` or another fit that keeps the full brand mark visible.
-- Use semantic landmarks, descriptive image alt text, visible keyboard focus, labelled form controls, and accessible names for every interactive element.
-- Add intentional, lightweight transitions for interactive controls and scroll-revealed visual accents. Respect `prefers-reduced-motion` and never make animation the only way to access content.
-- Verify page metadata: unique title, useful meta description, one primary `h1`, and correctly ordered heading hierarchy.
-- Run `npx tsc --noEmit` and `npm run build` after UI work.
-- Use Chrome DevTools on the changed pages: review mobile and desktop layout, accessibility tree and keyboard navigation, console errors, Lighthouse accessibility/SEO/best-practices, Core Web Vitals trace, image sizing, and layout shift. Fix material findings before completion.
-
-
-## Deploy to Cloudflare Workers
-
-This project uses the Cloudflare Vite plugin (configured in `vite.config.ts`) and `wrangler.jsonc`:
-
-1. Install Wrangler: `npm install -g wrangler`
-2. Authenticate: `wrangler login`
-3. Deploy: `npx wrangler deploy`
-
-For production env vars, run `wrangler secret put MY_VAR` for each secret listed in `.env.example`. Public (non-secret) vars go in `wrangler.jsonc` under `vars`.
-
-KV, D1, R2, and Durable Object bindings are configured in `wrangler.jsonc` — see https://developers.cloudflare.com/workers/wrangler/configuration/.
-
-
-## Setting up Clerk
-
-1. Create an application in the [Clerk dashboard](https://dashboard.clerk.com).
-2. Copy its publishable and secret keys into `.env.local`:
-
-   ```bash
-   VITE_CLERK_PUBLISHABLE_KEY=pk_test_...
-   CLERK_SECRET_KEY=sk_test_...
-   ```
-
-3. Start the app and visit `/demo/clerk`.
-
-### What's wired up
-
-- `clerkMiddleware()` authenticates each server request from `src/start.ts`.
-- `<ClerkProvider>` supplies auth state throughout the app.
-- `<SignInButton>` and `<UserButton>` in the header respond to the session.
-- `/demo/clerk` shows Clerk's prebuilt sign-in UI and signed-in user data.
-
-### Protecting a route
-
-Use `auth()` in a loader or server function when authorization must happen on the
-server:
-
-```tsx
-import { createFileRoute, redirect } from '@tanstack/react-router'
-import { createServerFn } from '@tanstack/react-start'
-import { auth } from '@clerk/tanstack-react-start/server'
-
-const getAuth = createServerFn({ method: 'GET' }).handler(async () => {
-  const { userId } = await auth()
-  return { userId }
-})
-
-export const Route = createFileRoute('/dashboard')({
-  beforeLoad: async () => {
-    const { userId } = await getAuth()
-    if (!userId) throw redirect({ to: '/' })
-  },
-})
-```
-
-`<Show when="signed-in">` remains useful for presentation, but server-side checks
-are the security boundary. See Clerk's [TanStack Start docs](https://clerk.com/docs/tanstack-react-start/getting-started/quickstart).
-
-### Roles and dashboard access
-
-- `src/start.ts` runs Clerk's request middleware on every server request.
-- `/dashboard` has a server-side session gate; signed-out visitors redirect to `/auth`.
-- `/admin` has a server-side role gate; signed-out visitors redirect to `/auth`, while non-admin users redirect to `/dashboard`.
-
-In Clerk Dashboard, add this session-token custom claim:
-
-```json
-{
-  "metadata": "{{user.public_metadata}}"
-}
-```
-
-Set `public_metadata.role` to `admin` only for trusted administrators. Everyone else is treated as a standard `user`; the check happens on the server, not from client UI state.
-
-`saquibhazari1000@gmail.com` is also treated as the administrator by a server-side Clerk user lookup. This is the only email-based override; all other accounts remain standard users. `/dashboard` redirects this account to `/admin`.
-
-### Sign-up verification requirements
-
-The custom Pastalo sign-up screen supports email-code verification. In Clerk Dashboard → User & Authentication → Sign-up, make phone number **optional** or disable it if this email-only flow is desired. If Clerk is configured to require a phone number, it will correctly report phone verification as an unfinished requirement after the email code succeeds.
-
-### Production checklist
-
-- Set both keys in the production environment; never expose `CLERK_SECRET_KEY`.
-- Use production keys from a dedicated production Clerk instance.
-- Configure the production domain and any social connections in the Clerk dashboard.
-
-
-## Shadcn
-
-Add components using the latest version of [Shadcn](https://ui.shadcn.com/).
+After the first deployment, set production secrets in Cloudflare Workers:
 
 ```bash
-pnpm dlx shadcn@latest add button
+npx wrangler secret put DATABASE_URL
+npx wrangler secret put CLERK_SECRET_KEY
+npx wrangler secret put RAZORPAY_KEY_SECRET
+npx wrangler secret put RAZORPAY_WEBHOOK_SECRET
+npx wrangler secret put RESEND_API_KEY
+npx wrangler secret put EMAIL_FROM
+npx wrangler secret put APP_URL
 ```
 
+Then configure Razorpay’s `payment.captured` and `order.paid` webhook events to:
 
-## Setting up Neon
-
-When running the `dev` command, `vite-plugin-neon-new` will identify there is not a database setup. It will then create and seed a claimable database.
-
-It is the same process as [Neon Launchpad](https://neon.new).
-
-> [!IMPORTANT]  
-> Claimable databases expire in 72 hours.
-
-
-
-## Routing
-
-This project uses [TanStack Router](https://tanstack.com/router) with file-based routing. Routes are managed as files in `src/routes`.
-
-### Adding A Route
-
-To add a new route to your application just add a new file in the `./src/routes` directory.
-
-TanStack will automatically generate the content of the route file for you.
-
-Now that you have two routes you can use a `Link` component to navigate between them.
-
-### Adding Links
-
-To use SPA (Single Page Application) navigation you will need to import the `Link` component from `@tanstack/react-router`.
-
-```tsx
-import { Link } from "@tanstack/react-router";
+```text
+https://your-domain.com/api/razorpay-webhook
 ```
 
-Then anywhere in your JSX you can use it like so:
+For production receipts, verify a sending domain in Resend and remove any local-only `EMAIL_TO` override.
 
-```tsx
-<Link to="/about">About</Link>
-```
+## Roadmap
 
-This will create a link that will navigate to the `/about` route.
+- [ ] Public production domain and absolute canonical/social metadata
+- [ ] Isolated Neon staging database and live webhook integration tests
+- [ ] Persistent cart and inventory reservation expiry
+- [ ] Refund, cancellation, tax, coupon, and invoice workflows
+- [ ] Shipping carrier integration and live delivery events
+- [ ] Rate limiting, error monitoring, backups, and production observability
 
-More information on the `Link` component can be found in the [Link documentation](https://tanstack.com/router/v1/docs/framework/react/api/router/linkComponent).
+## Socials
 
-### Using A Layout
+Replace these placeholders with your own handles before publishing.
 
-In the File Based Routing setup the layout is located in `src/routes/__root.tsx`. Anything you add to the root route will appear in all the routes. The route content will appear in the JSX where you render `{children}` in the `shellComponent`.
+[![GitHub](https://img.shields.io/badge/GitHub-181717?logo=github&logoColor=white)](https://github.com/your-username)
+[![LinkedIn](https://img.shields.io/badge/LinkedIn-0A66C2?logo=linkedin&logoColor=white)](https://www.linkedin.com/in/your-handle/)
+[![Instagram](https://img.shields.io/badge/Instagram-E4405F?logo=instagram&logoColor=white)](https://instagram.com/your-handle)
+[![X](https://img.shields.io/badge/X-000000?logo=x&logoColor=white)](https://x.com/your-handle)
+[![Email](https://img.shields.io/badge/Email-contact%40yourdomain.com-EA4335?logo=gmail&logoColor=white)](mailto:contact@yourdomain.com)
 
-Here is an example layout that includes a header:
+## License
 
-```tsx
-import { HeadContent, Scripts, createRootRoute } from '@tanstack/react-router'
+This project is currently private and intended as a portfolio and ecommerce showcase. Add a license before distributing or accepting external contributions.
 
-export const Route = createRootRoute({
-  head: () => ({
-    meta: [
-      { charSet: 'utf-8' },
-      { name: 'viewport', content: 'width=device-width, initial-scale=1' },
-      { title: 'My App' },
-    ],
-  }),
-  shellComponent: ({ children }) => (
-    <html lang="en">
-      <head>
-        <HeadContent />
-      </head>
-      <body>
-        <header>
-          <nav>
-            <Link to="/">Home</Link>
-            <Link to="/about">About</Link>
-          </nav>
-        </header>
-        {children}
-        <Scripts />
-      </body>
-    </html>
-  ),
-})
-```
+---
 
-More information on layouts can be found in the [Layouts documentation](https://tanstack.com/router/latest/docs/framework/react/guide/routing-concepts#layouts).
-
-## Server Functions
-
-TanStack Start provides server functions that allow you to write server-side code that seamlessly integrates with your client components.
-
-```tsx
-import { createServerFn } from '@tanstack/react-start'
-
-const getServerTime = createServerFn({
-  method: 'GET',
-}).handler(async () => {
-  return new Date().toISOString()
-})
-
-// Use in a component
-function MyComponent() {
-  const [time, setTime] = useState('')
-  
-  useEffect(() => {
-    getServerTime().then(setTime)
-  }, [])
-  
-  return <div>Server time: {time}</div>
-}
-```
-
-## API Routes
-
-You can create API routes by using the `server` property in your route definitions:
-
-```tsx
-import { createFileRoute } from '@tanstack/react-router'
-import { json } from '@tanstack/react-start'
-
-export const Route = createFileRoute('/api/hello')({
-  server: {
-    handlers: {
-      GET: () => json({ message: 'Hello, World!' }),
-    },
-  },
-})
-```
-
-## Data Fetching
-
-There are multiple ways to fetch data in your application. You can use TanStack Query to fetch data from a server. But you can also use the `loader` functionality built into TanStack Router to load the data for a route before it's rendered.
-
-For example:
-
-```tsx
-import { createFileRoute } from '@tanstack/react-router'
-
-export const Route = createFileRoute('/people')({
-  loader: async () => {
-    const response = await fetch('https://swapi.dev/api/people')
-    return response.json()
-  },
-  component: PeopleComponent,
-})
-
-function PeopleComponent() {
-  const data = Route.useLoaderData()
-  return (
-    <ul>
-      {data.results.map((person) => (
-        <li key={person.name}>{person.name}</li>
-      ))}
-    </ul>
-  )
-}
-```
-
-Loaders simplify your data fetching logic dramatically. Check out more information in the [Loader documentation](https://tanstack.com/router/latest/docs/framework/react/guide/data-loading#loader-parameters).
-
-
-# Demo files
-
-Files prefixed with `demo` can be safely deleted. They are there to provide a starting point for you to play around with the features you've installed.
-
-
-# Learn More
-
-You can learn more about all of the offerings from TanStack in the [TanStack documentation](https://tanstack.com).
-
-For TanStack Start specific documentation, visit [TanStack Start](https://tanstack.com/start).
+Crafted with care by **Saquib Hazari** · [Portfolio](https://your-portfolio.com) · [LinkedIn](https://www.linkedin.com/in/your-handle/)

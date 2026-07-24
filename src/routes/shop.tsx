@@ -229,11 +229,11 @@ function ShopPage() {
 										disabled={product.isSoldOut || buying === product.id}
 										onClick={() => {
 											setBuying(product.id);
-											window.dispatchEvent(
-												new CustomEvent("pastalo:cart", { detail: 1 }),
-											);
 											window.setTimeout(
-												() => window.location.assign("/cart"),
+												() =>
+													window.location.assign(
+														`/checkout?variantId=${product.variantId}&quantity=1`,
+													),
 												420,
 											);
 										}}

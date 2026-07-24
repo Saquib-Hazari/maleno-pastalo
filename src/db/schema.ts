@@ -40,6 +40,12 @@ export const inventoryMovementType = pgEnum("inventory_movement_type", [
 	"sale",
 	"return",
 ]);
+export const paymentProvider = pgEnum("payment_provider", ["razorpay"]);
+export const paymentStatus = pgEnum("payment_status", [
+	"created",
+	"paid",
+	"failed",
+]);
 
 /**
  * Application-owned profile data. Clerk remains the identity and verification
@@ -223,3 +229,37 @@ export const orderAddresses = pgTable("order_addresses", {
 	postalCode: text("postal_code").notNull(),
 	country: text("country").notNull(),
 });
+
+/**
+ * A provider-neutral payment record. Razorpay identifiers are stored for
+ * reconciliation, while the order remains the source of fulfilment truth.
+ */
+export const payments = pgTable(
+	"payments",
+	{
+		id: uuid("id").defaultRandom().primaryKey(),
+		orderId: uuid("order_id")
+			.notNull()
+			.references(() => orders.id, { onDelete: "cascade" }),
+		provider: paymentProvider("provider").notNull().default("razorpay"),
+		providerOrderId: text("provider_order_id").notNull(),
+		providerPaymentId: text("provider_payment_id"),
+		status: paymentStatus("status").notNull().default("created"),
+		amountCents: integer("amount_cents").notNull(),
+		currency: text("currency").notNull().default("INR"),
+		createdAt: timestamp("created_at", { withTimezone: true })
+			.notNull()
+			.defaultNow(),
+		paidAt: timestamp("paid_at", { withTimezone: true }),
+	},
+	(table) => [
+		uniqueIndex("payments_provider_order_unique").on(
+			table.provider,
+			table.providerOrderId,
+		),
+		uniqueIndex("payments_provider_payment_unique").on(
+			table.provider,
+			table.providerPaymentId,
+		),
+	],
+);
