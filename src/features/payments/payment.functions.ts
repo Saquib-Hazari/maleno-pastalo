@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { getSessionAccess } from "../../lib/auth";
 import type { CreatePaymentInput } from "./payment.types";
 
 function createPaymentInput(data: unknown) {
@@ -27,6 +28,8 @@ function paymentVerificationInput(data: unknown) {
 export const createRazorpayCheckout = createServerFn({ method: "POST" })
 	.validator(createPaymentInput)
 	.handler(async ({ data }) => {
+		const access = await getSessionAccess();
+		if (!access.userId) throw new Error("Please sign in before checkout.");
 		const { PaymentService } = await import("./payment.service");
 		return new PaymentService().createRazorpayOrder(data);
 	});
@@ -34,6 +37,8 @@ export const createRazorpayCheckout = createServerFn({ method: "POST" })
 export const verifyRazorpayCheckout = createServerFn({ method: "POST" })
 	.validator(paymentVerificationInput)
 	.handler(async ({ data }) => {
+		const access = await getSessionAccess();
+		if (!access.userId) throw new Error("Please sign in before checkout.");
 		const { PaymentService } = await import("./payment.service");
 		return new PaymentService().verifyRazorpayPayment(data);
 	});

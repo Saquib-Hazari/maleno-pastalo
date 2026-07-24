@@ -11,17 +11,22 @@ import {
 	ClipboardList,
 	LayoutDashboard,
 	LogOut,
+	Mail,
 	PackageCheck,
+	Search,
 	Settings,
 	ShoppingBag,
+	TrendingUp,
 	UserRound,
 	Users,
 } from "lucide-react";
 import type { FormEvent } from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
 	Area,
 	AreaChart,
+	Bar,
+	BarChart,
 	CartesianGrid,
 	ResponsiveContainer,
 	Tooltip,
@@ -29,7 +34,10 @@ import {
 	YAxis,
 } from "recharts";
 import { getAdminDashboardData } from "../features/analytics/analytics.functions";
-import type { LiveOrder } from "../features/analytics/analytics.service";
+import type {
+	AdminCustomer,
+	AdminDashboardData,
+} from "../features/analytics/analytics.service";
 import {
 	deleteCatalogProduct,
 	getAdminCatalog,
@@ -84,16 +92,7 @@ function AdminPage() {
 	const [activeView, setActiveView] =
 		useState<(typeof nav)[number][1]>("Overview");
 	const [accountOpen, setAccountOpen] = useState(false);
-	const [dashboard, setDashboard] = useState<{
-		orders: LiveOrder[];
-		revenueData: Array<{ month: string; revenue: number }>;
-		metrics: {
-			totalRevenueCents: number;
-			paidOrders: number;
-			newCustomers: number;
-			profiles: number;
-		};
-	} | null>(null);
+	const [dashboard, setDashboard] = useState<AdminDashboardData | null>(null);
 	const displayName = user?.fullName || user?.firstName || "Administrator";
 	useEffect(() => {
 		let active = true;
@@ -484,7 +483,7 @@ function AdminPage() {
 						</section>
 					</>
 				) : (
-					<AdminWorkspace view={activeView} orders={liveOrders} />
+					<AdminWorkspace view={activeView} dashboard={dashboard} />
 				)}
 			</section>
 		</main>
@@ -493,11 +492,12 @@ function AdminPage() {
 
 function AdminWorkspace({
 	view,
-	orders: liveOrders,
+	dashboard,
 }: {
 	view: Exclude<(typeof nav)[number][1], "Overview">;
-	orders: LiveOrder[];
+	dashboard: AdminDashboardData | null;
 }) {
+	const liveOrders = dashboard?.orders ?? [];
 	const copy = {
 		Orders: ["Orders", "Review and update the latest fulfilment activity."],
 		Products: ["Products", "Manage your artisan pasta collection."],
@@ -551,33 +551,394 @@ function AdminWorkspace({
 				</div>
 			) : view === "Products" ? (
 				<CatalogManager />
+			) : view === "Customers" ? (
+				<CustomersWorkspace customers={dashboard?.customers ?? []} />
 			) : view === "Analytics" ? (
-				<div className="mt-6 grid gap-4 sm:grid-cols-3">
-					<div className="rounded-2xl border border-[#eadfc9] bg-[#fff8e9] p-5">
-						<p className="text-xs text-[#70452d]">Recorded orders</p>
-						<p className="mt-2 font-serif text-3xl font-bold">
-							{liveOrders.length}
-						</p>
-					</div>
-					<div className="rounded-2xl border border-[#eadfc9] bg-[#fff8e9] p-5">
-						<p className="text-xs text-[#70452d]">Confirmed payments</p>
-						<p className="mt-2 font-serif text-3xl font-bold">
-							{
-								liveOrders.filter((order) => order.status === "confirmed")
-									.length
-							}
-						</p>
-					</div>
-					<div className="rounded-2xl border border-[#eadfc9] bg-[#fff8e9] p-5">
-						<p className="text-xs text-[#70452d]">Live refresh</p>
-						<p className="mt-2 font-serif text-3xl font-bold">15s</p>
-					</div>
-				</div>
+				<AnalyticsWorkspace dashboard={dashboard} />
 			) : (
 				<div className="mt-6 rounded-2xl border border-dashed border-[#decba8] bg-[#fff8e9] p-6 text-sm text-[#70452d]">
 					This workspace is ready for the next operational feature.
 				</div>
 			)}
+		</section>
+	);
+}
+
+function CustomersWorkspace({ customers }: { customers: AdminCustomer[] }) {
+	const [query, setQuery] = useState("");
+	const visibleCustomers = useMemo(() => {
+		const needle = query.trim().toLowerCase();
+		if (!needle) return customers;
+		return customers.filter((customer) =>
+			[customer.name, customer.email, customer.location ?? ""]
+				.join(" ")
+				.toLowerCase()
+				.includes(needle),
+		);
+	}, [customers, query]);
+	const repeatCustomers = customers.filter(
+		(customer) => customer.segment === "Repeat",
+	).length;
+	const totalCustomerRevenue = customers.reduce(
+		(total, customer) => total + customer.totalSpentCents,
+		0,
+	);
+	return (
+		<div className="mt-6">
+			<div className="grid gap-4 sm:grid-cols-3">
+				<MiniMetric label="Customer records" value={String(customers.length)} />
+				<MiniMetric label="Repeat customers" value={String(repeatCustomers)} />
+				<MiniMetric
+					label="Customer revenue"
+					value={formatMoney(totalCustomerRevenue)}
+				/>
+			</div>
+			<div className="relative mt-6 max-w-md">
+				<Search
+					size={16}
+					aria-hidden="true"
+					className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-[#96745c]"
+				/>
+				<label className="sr-only" htmlFor="customer-search">
+					Search customers
+				</label>
+				<input
+					id="customer-search"
+					value={query}
+					onChange={(event) => setQuery(event.target.value)}
+					placeholder="Search customer, email or city"
+					className="w-full rounded-full border border-[#decba8] bg-[#fff8e9] py-3 pl-10 pr-4 text-sm font-medium outline-none transition placeholder:text-[#96745c] focus:border-[#f66a16] focus:ring-2 focus:ring-[#f66a16]/15"
+				/>
+			</div>
+			<div className="mt-5 overflow-x-auto rounded-2xl border border-[#eadfc9]">
+				<table className="w-full min-w-[780px] text-left text-sm">
+					<thead className="border-b border-[#eadfc9] bg-[#fff8e9] text-[10px] uppercase tracking-wider text-[#96745c]">
+						<tr>
+							<th className="px-4 py-3 font-bold">Customer</th>
+							<th className="px-4 py-3 font-bold">Location</th>
+							<th className="px-4 py-3 font-bold">Orders</th>
+							<th className="px-4 py-3 font-bold">Lifetime spend</th>
+							<th className="px-4 py-3 font-bold">Last activity</th>
+							<th className="px-4 py-3 font-bold">Segment</th>
+							<th className="px-4 py-3 font-bold">
+								<span className="sr-only">Contact</span>
+							</th>
+						</tr>
+					</thead>
+					<tbody>
+						{visibleCustomers.map((customer) => (
+							<tr
+								key={customer.email}
+								className="border-b border-[#f0e8d7] last:border-0 hover:bg-[#fffdf8]"
+							>
+								<td className="px-4 py-4">
+									<div className="flex items-center gap-3">
+										{customer.imageUrl ? (
+											<img
+												src={customer.imageUrl}
+												alt=""
+												className="size-9 rounded-full object-cover"
+											/>
+										) : (
+											<span className="grid size-9 place-items-center rounded-full bg-[#f3e8cc] font-serif font-bold text-[#a84716]">
+												{customer.name.charAt(0).toUpperCase()}
+											</span>
+										)}
+										<div>
+											<p className="font-bold text-[#64391f]">
+												{customer.name}
+											</p>
+											<p className="mt-0.5 text-xs text-[#70452d]">
+												{customer.email}
+											</p>
+										</div>
+									</div>
+								</td>
+								<td className="px-4 py-4 text-[#70452d]">
+									{customer.location ?? "—"}
+								</td>
+								<td className="px-4 py-4 font-bold">
+									{customer.paidOrderCount}
+								</td>
+								<td className="px-4 py-4 font-bold">
+									{formatMoney(customer.totalSpentCents)}
+								</td>
+								<td className="px-4 py-4 text-[#70452d]">
+									{customer.lastOrderAt
+										? new Intl.DateTimeFormat("en-IN", {
+												day: "numeric",
+												month: "short",
+												year: "numeric",
+											}).format(new Date(customer.lastOrderAt))
+										: "Profile saved"}
+								</td>
+								<td className="px-4 py-4">
+									<CustomerSegment segment={customer.segment} />
+								</td>
+								<td className="px-4 py-4">
+									<a
+										href={`mailto:${customer.email}`}
+										aria-label={`Email ${customer.name}`}
+										className="grid size-9 place-items-center rounded-full border border-[#decba8] text-[#a84716] transition hover:border-[#f66a16] hover:bg-[#fff0d7]"
+									>
+										<Mail size={15} />
+									</a>
+								</td>
+							</tr>
+						))}
+					</tbody>
+				</table>
+				{visibleCustomers.length === 0 && (
+					<p className="p-6 text-center text-sm text-[#70452d]">
+						No customer records match that search.
+					</p>
+				)}
+			</div>
+		</div>
+	);
+}
+
+function AnalyticsWorkspace({
+	dashboard,
+}: {
+	dashboard: AdminDashboardData | null;
+}) {
+	const metrics = dashboard?.metrics;
+	const topCustomers = (dashboard?.customers ?? [])
+		.filter((customer) => customer.totalSpentCents > 0)
+		.slice(0, 5);
+	return (
+		<div className="mt-6">
+			<div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+				<MiniMetric
+					label="Gross revenue"
+					value={formatMoney(metrics?.totalRevenueCents ?? 0)}
+				/>
+				<MiniMetric
+					label="Average order value"
+					value={formatMoney(metrics?.averageOrderValueCents ?? 0)}
+				/>
+				<MiniMetric
+					label="Repeat customers"
+					value={String(metrics?.repeatCustomers ?? 0)}
+				/>
+				<MiniMetric
+					label="Pending payment"
+					value={String(metrics?.pendingOrders ?? 0)}
+				/>
+			</div>
+			<div className="mt-6 grid gap-6 xl:grid-cols-2">
+				<ChartPanel
+					eyebrow="Revenue trend"
+					title="Paid revenue — last 6 months"
+				>
+					<ResponsiveContainer width="100%" height="100%">
+						<AreaChart
+							data={dashboard?.revenueData ?? []}
+							margin={{ top: 12, right: 4, left: -20, bottom: 0 }}
+						>
+							<defs>
+								<linearGradient
+									id="analytics-revenue"
+									x1="0"
+									x2="0"
+									y1="0"
+									y2="1"
+								>
+									<stop offset="0%" stopColor="#f66a16" stopOpacity={0.32} />
+									<stop offset="100%" stopColor="#f66a16" stopOpacity={0.02} />
+								</linearGradient>
+							</defs>
+							<CartesianGrid
+								vertical={false}
+								stroke="#eadfc9"
+								strokeDasharray="4 6"
+							/>
+							<XAxis
+								dataKey="month"
+								axisLine={false}
+								tickLine={false}
+								tick={{ fill: "#96745c", fontSize: 10, fontWeight: 700 }}
+							/>
+							<YAxis hide />
+							<Tooltip
+								formatter={(value) => [
+									formatMoney(Math.round(Number(value) * 100)),
+									"Revenue",
+								]}
+								contentStyle={{ borderRadius: 14, borderColor: "#eadfc9" }}
+							/>
+							<Area
+								type="monotone"
+								dataKey="revenue"
+								stroke="#f66a16"
+								strokeWidth={3}
+								fill="url(#analytics-revenue)"
+							/>
+						</AreaChart>
+					</ResponsiveContainer>
+				</ChartPanel>
+				<ChartPanel eyebrow="Order health" title="Orders by fulfilment status">
+					<ResponsiveContainer width="100%" height="100%">
+						<BarChart
+							data={dashboard?.orderStatusData ?? []}
+							margin={{ top: 12, right: 4, left: -20, bottom: 0 }}
+						>
+							<CartesianGrid
+								vertical={false}
+								stroke="#eadfc9"
+								strokeDasharray="4 6"
+							/>
+							<XAxis
+								dataKey="status"
+								axisLine={false}
+								tickLine={false}
+								tick={{ fill: "#96745c", fontSize: 10, fontWeight: 700 }}
+							/>
+							<YAxis
+								allowDecimals={false}
+								axisLine={false}
+								tickLine={false}
+								tick={{ fill: "#96745c", fontSize: 10 }}
+							/>
+							<Tooltip
+								cursor={{ fill: "#fff0d7" }}
+								contentStyle={{ borderRadius: 14, borderColor: "#eadfc9" }}
+							/>
+							<Bar
+								dataKey="orders"
+								name="Orders"
+								fill="#6d7b2c"
+								radius={[8, 8, 0, 0]}
+							/>
+						</BarChart>
+					</ResponsiveContainer>
+				</ChartPanel>
+			</div>
+			<div className="mt-6 grid gap-6 xl:grid-cols-[.85fr_1.15fr]">
+				<ChartPanel eyebrow="Acquisition" title="New customer records">
+					<ResponsiveContainer width="100%" height="100%">
+						<BarChart
+							data={dashboard?.customerGrowthData ?? []}
+							margin={{ top: 12, right: 4, left: -20, bottom: 0 }}
+						>
+							<CartesianGrid
+								vertical={false}
+								stroke="#eadfc9"
+								strokeDasharray="4 6"
+							/>
+							<XAxis
+								dataKey="month"
+								axisLine={false}
+								tickLine={false}
+								tick={{ fill: "#96745c", fontSize: 10, fontWeight: 700 }}
+							/>
+							<YAxis
+								allowDecimals={false}
+								axisLine={false}
+								tickLine={false}
+								tick={{ fill: "#96745c", fontSize: 10 }}
+							/>
+							<Tooltip
+								cursor={{ fill: "#fff0d7" }}
+								contentStyle={{ borderRadius: 14, borderColor: "#eadfc9" }}
+							/>
+							<Bar
+								dataKey="customers"
+								name="Customers"
+								fill="#f9b562"
+								radius={[8, 8, 0, 0]}
+							/>
+						</BarChart>
+					</ResponsiveContainer>
+				</ChartPanel>
+				<section className="rounded-2xl border border-[#eadfc9] bg-[#fff8e9] p-5">
+					<div className="flex items-start justify-between gap-3">
+						<div>
+							<p className="text-[10px] font-bold uppercase tracking-wider text-[#a84716]">
+								Customer value
+							</p>
+							<h3 className="mt-1 font-serif text-xl font-bold">
+								Top customers
+							</h3>
+						</div>
+						<TrendingUp size={19} className="text-[#6d7b2c]" />
+					</div>
+					<div className="mt-4 divide-y divide-[#eadfc9]">
+						{topCustomers.map((customer, index) => (
+							<div
+								key={customer.email}
+								className="flex items-center justify-between gap-3 py-3"
+							>
+								<div className="min-w-0">
+									<p className="truncate text-sm font-bold">
+										{index + 1}. {customer.name}
+									</p>
+									<p className="truncate text-xs text-[#70452d]">
+										{customer.paidOrderCount} paid{" "}
+										{customer.paidOrderCount === 1 ? "order" : "orders"}
+									</p>
+								</div>
+								<p className="shrink-0 text-sm font-bold text-[#a84716]">
+									{formatMoney(customer.totalSpentCents)}
+								</p>
+							</div>
+						))}
+						{topCustomers.length === 0 && (
+							<p className="py-6 text-sm text-[#70452d]">
+								Paid customer activity will appear here after checkout.
+							</p>
+						)}
+					</div>
+				</section>
+			</div>
+			<p className="mt-5 text-xs text-[#70452d]">
+				Analytics uses confirmed payment records and refreshes automatically
+				every 15 seconds.
+			</p>
+		</div>
+	);
+}
+
+function MiniMetric({ label, value }: { label: string; value: string }) {
+	return (
+		<div className="rounded-2xl border border-[#eadfc9] bg-[#fff8e9] p-5">
+			<p className="text-xs text-[#70452d]">{label}</p>
+			<p className="mt-2 font-serif text-3xl font-bold">{value}</p>
+		</div>
+	);
+}
+
+function CustomerSegment({ segment }: { segment: AdminCustomer["segment"] }) {
+	const style =
+		segment === "Repeat"
+			? "bg-[#edf1d7] text-[#56611c]"
+			: segment === "New"
+				? "bg-[#fff0d7] text-[#a84716]"
+				: "bg-[#f3e8cc] text-[#70452d]";
+	return (
+		<span className={`rounded-full px-3 py-1 text-[10px] font-bold ${style}`}>
+			{segment}
+		</span>
+	);
+}
+
+function ChartPanel({
+	eyebrow,
+	title,
+	children,
+}: {
+	eyebrow: string;
+	title: string;
+	children: React.ReactNode;
+}) {
+	return (
+		<section className="rounded-2xl border border-[#eadfc9] bg-white p-5">
+			<p className="text-[10px] font-bold uppercase tracking-wider text-[#a84716]">
+				{eyebrow}
+			</p>
+			<h3 className="mt-1 font-serif text-xl font-bold">{title}</h3>
+			<div className="mt-4 h-60">{children}</div>
 		</section>
 	);
 }

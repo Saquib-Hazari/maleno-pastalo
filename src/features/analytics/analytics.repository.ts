@@ -50,4 +50,21 @@ export class AnalyticsRepository {
 	async countProfiles() {
 		return database().select({ id: profiles.id }).from(profiles);
 	}
+
+	async listProfiles() {
+		return database()
+			.select({
+				email: profiles.email,
+				firstName: profiles.firstName,
+				lastName: profiles.lastName,
+				phoneNumber: profiles.phoneNumber,
+				imageUrl: profiles.imageUrl,
+				city: profiles.city,
+				state: profiles.state,
+				country: profiles.country,
+				createdAt: profiles.createdAt,
+			})
+			.from(profiles)
+			.orderBy(desc(profiles.createdAt));
+	}
 }

@@ -20,7 +20,11 @@ export default function Footer() {
 					rotate: 0,
 					duration: 0.7,
 					ease: "power3.out",
-					scrollTrigger: { trigger: footerRef.current, start: "top 88%", once: true },
+					scrollTrigger: {
+						trigger: footerRef.current,
+						start: "top 88%",
+						once: true,
+					},
 				},
 			);
 			gsap.fromTo(
@@ -33,7 +37,11 @@ export default function Footer() {
 					duration: 1.05,
 					delay: 0.12,
 					ease: "power3.out",
-					scrollTrigger: { trigger: footerRef.current, start: "top 88%", once: true },
+					scrollTrigger: {
+						trigger: footerRef.current,
+						start: "top 88%",
+						once: true,
+					},
 				},
 			);
 		}, footerRef);
@@ -41,10 +49,16 @@ export default function Footer() {
 	}, []);
 
 	return (
-		<footer ref={footerRef} className="overflow-hidden bg-[#64391f] px-5 pb-7 pt-12 text-[#fff5df]">
+		<footer
+			ref={footerRef}
+			className="overflow-hidden bg-[#64391f] px-5 pb-7 pt-12 text-[#fff5df]"
+		>
 			<div className="mx-auto grid max-w-[1120px] gap-8 sm:grid-cols-2 lg:grid-cols-4">
 				<div>
-					<div ref={logoRef} className="inline-flex rounded-xl bg-[#fff8e9] px-2 py-1 shadow-sm">
+					<div
+						ref={logoRef}
+						className="inline-flex rounded-xl bg-[#fff8e9] px-2 py-1 shadow-sm"
+					>
 						<img
 							src="/images/brand/molino-wordmark-horizontal.png"
 							alt="Molino Pastello"
@@ -85,17 +99,36 @@ export default function Footer() {
 					]}
 				/>
 			</div>
-			<p ref={wordmarkRef} aria-hidden="true" className="mx-auto mt-12 max-w-[1120px] select-none whitespace-nowrap text-center font-serif text-[20vw] font-bold leading-[.64] text-[#fff5df]/[.075] sm:text-[12rem] lg:text-[15rem]">
-				PASTALO
+			<p
+				ref={wordmarkRef}
+				aria-hidden="true"
+				className="mt-12 w-full select-none whitespace-nowrap text-center font-serif text-[14vw] font-bold leading-[.64] text-[#fff5df]/[.075] sm:text-[9rem] lg:text-[13rem]"
+			>
+				PASTELLO
 			</p>
 			<div className="mx-auto mt-10 flex max-w-[1120px] flex-col gap-3 border-t border-white/15 pt-5 text-[9px] font-bold uppercase tracking-wider text-[#fff5df] sm:flex-row sm:justify-between">
 				<span>© 2026 Molino Pastello. All rights reserved.</span>
 				<span className="flex flex-wrap gap-x-2 gap-y-1">
-					<a className="transition hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#ffc79f]" href="/legal#privacy">Privacy Policy</a>
+					<a
+						className="transition hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#ffc79f]"
+						href="/legal#privacy"
+					>
+						Privacy Policy
+					</a>
 					<span aria-hidden="true">·</span>
-					<a className="transition hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#ffc79f]" href="/legal#terms">Terms of Service</a>
+					<a
+						className="transition hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#ffc79f]"
+						href="/legal#terms"
+					>
+						Terms of Service
+					</a>
 					<span aria-hidden="true">·</span>
-					<a className="transition hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#ffc79f]" href="/legal#accessibility">Accessibility</a>
+					<a
+						className="transition hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#ffc79f]"
+						href="/legal#accessibility"
+					>
+						Accessibility
+					</a>
 				</span>
 			</div>
 		</footer>
@@ -116,7 +149,10 @@ function FooterGroup({
 			<ul className="mt-4 space-y-2 text-xs text-[#fff5df]/70">
 				{items.map(([label, href]) => (
 					<li key={label}>
-						<a className="inline-flex origin-left transition duration-200 hover:translate-x-1 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#ffc79f]" href={href}>
+						<a
+							className="inline-flex origin-left transition duration-200 hover:translate-x-1 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#ffc79f]"
+							href={href}
+						>
 							{label}
 						</a>
 					</li>

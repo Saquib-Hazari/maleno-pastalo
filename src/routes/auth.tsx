@@ -112,7 +112,15 @@ function AuthPage() {
 			return;
 		}
 		await activate({ session: sessionId });
-		await navigate({ to: "/dashboard" });
+		const returnTo = new URLSearchParams(window.location.search).get(
+			"returnTo",
+		);
+		await navigate({
+			to:
+				returnTo && returnTo.startsWith("/") && !returnTo.startsWith("//")
+					? returnTo
+					: "/dashboard",
+		});
 	};
 	const submit = async (event: FormEvent<HTMLFormElement>) => {
 		event.preventDefault();

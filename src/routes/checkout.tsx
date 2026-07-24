@@ -5,7 +5,9 @@ import {
 	CreditCard,
 	LoaderCircle,
 	LockKeyhole,
+	LogIn,
 	Truck,
+	X,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { getStorefrontProducts } from "../features/catalog/catalog.functions";
@@ -91,6 +93,7 @@ function CheckoutPage() {
 	const [method, setMethod] = useState<"standard" | "express">("standard");
 	const [state, setState] = useState<"idle" | "opening" | "paid">("idle");
 	const [message, setMessage] = useState("");
+	const [signInPromptOpen, setSignInPromptOpen] = useState(false);
 	const items = useMemo(() => {
 		const product = products.find(
 			(item) => item.variantId === selected.variantId,
@@ -136,6 +139,10 @@ function CheckoutPage() {
 	const beginPayment = async (event: React.FormEvent<HTMLFormElement>) => {
 		event.preventDefault();
 		setMessage("");
+		if (!isSignedIn) {
+			setSignInPromptOpen(true);
+			return;
+		}
 		if (!items.length) {
 			setMessage("Your basket is empty. Please select a pasta from the shop.");
 			return;
@@ -441,6 +448,63 @@ function CheckoutPage() {
 					</aside>
 				</div>
 			</div>
+			{signInPromptOpen && (
+				<div
+					className="fixed inset-0 z-50 grid place-items-center bg-[#432613]/45 p-5 backdrop-blur-sm"
+					role="presentation"
+					onMouseDown={(event) => {
+						if (event.target === event.currentTarget)
+							setSignInPromptOpen(false);
+					}}
+				>
+					<section
+						role="dialog"
+						aria-modal="true"
+						aria-labelledby="checkout-sign-in-title"
+						className="w-full max-w-md rounded-[2rem] border border-[#f2d7aa] bg-[#fffdf8] p-7 text-center shadow-2xl motion-safe:animate-[fade-in_.2s_ease-out]"
+					>
+						<div className="flex justify-end">
+							<button
+								type="button"
+								onClick={() => setSignInPromptOpen(false)}
+								aria-label="Close sign-in prompt"
+								className="-mr-2 -mt-2 grid size-9 place-items-center rounded-full text-[#70452d] transition hover:bg-[#f3e8cc]"
+							>
+								<X size={18} />
+							</button>
+						</div>
+						<div className="mx-auto -mt-2 grid size-14 place-items-center rounded-2xl bg-[#fff0d7] text-[#a84716]">
+							<LockKeyhole size={25} />
+						</div>
+						<p className="mt-5 text-[10px] font-bold uppercase tracking-[.18em] text-[#a84716]">
+							Your order, securely saved
+						</p>
+						<h2
+							id="checkout-sign-in-title"
+							className="mt-2 font-serif text-3xl font-bold text-[#64391f]"
+						>
+							Please sign in to checkout
+						</h2>
+						<p className="mt-3 text-sm leading-6 text-[#70452d]">
+							Sign in or create an account to save your delivery details, view
+							orders, and continue securely to payment.
+						</p>
+						<a
+							href={`/auth?returnTo=${encodeURIComponent(`/checkout?variantId=${selected.variantId}&quantity=${selected.quantity}`)}`}
+							className="mt-6 flex w-full items-center justify-center gap-2 rounded-full bg-[#f66a16] px-5 py-3.5 text-xs font-bold uppercase tracking-wider text-white no-underline shadow-[0_10px_22px_rgba(246,106,22,.28)] transition hover:-translate-y-0.5 hover:bg-[#a84716]"
+						>
+							<LogIn size={16} /> Sign in to continue
+						</a>
+						<button
+							type="button"
+							onClick={() => setSignInPromptOpen(false)}
+							className="mt-3 text-xs font-bold text-[#70452d] underline underline-offset-4 transition hover:text-[#a84716]"
+						>
+							Keep browsing
+						</button>
+					</section>
+				</div>
+			)}
 		</main>
 	);
 }
